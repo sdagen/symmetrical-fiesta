@@ -1,0 +1,15 @@
+# Simulink / MATLAB derived and cache files
+GalacticSoup/work/
+slprj/
+*.slxc
+*.autosave
+*.asv
+sccprj/
+codegen/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Personal/local Claude Code settings (not shared)
+.claude/settings.local.json
