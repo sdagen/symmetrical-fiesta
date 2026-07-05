@@ -18,7 +18,7 @@ The facility receives ingredient deliveries by rocket, stores and prepares them,
 |---|---|
 | `architecture/` | System Composer models and interface dictionaries for the Functional and Logical layers, and (in progress) the Physical layer variant models. |
 | `requirements/` | Requirements Toolbox sets (`.slreqx`) imported from the source spreadsheets in `../requirements/`, plus surrogate index files (`.slmx`) maintained by Requirements Toolbox. |
-| `analysis/` | Roll-up and trade-study analysis scripts and outputs (`variantMetrics.csv`, `tradeScores.csv`, `mcWinShare.csv`); see [`docs/06_trade_study_results.md`](docs/06_trade_study_results.md). |
+| `analysis/` | Roll-up, formal compliance gate, and trade-study analysis scripts and outputs (`variantMetrics.csv`, `complianceGate.csv`, `tradeScores.csv`, `mcWinShare.csv`). Run the whole chain with `runFullAnalysis`. See [`docs/06_trade_study_results.md`](docs/06_trade_study_results.md) and [`docs/08_formal_compliance_gate.md`](docs/08_formal_compliance_gate.md). |
 | `docs/` | This project's systems-engineering documentation set — requirements analysis, architecture rationale, and decision log. |
 | `work/` | MATLAB project build cache (`slprj/` etc.). Not source-controlled content; safe to delete/regenerate. |
 
@@ -28,9 +28,10 @@ The facility receives ingredient deliveries by rocket, stores and prepares them,
 |---|---|---|
 | `architecture/GalacticSoupFunctional.slx` | Functional | 12 verb-phrase functions describing *what* the system does, independent of implementation. Uses the abstract interface dictionary `FunctionalInterfaces.sldd`. |
 | `architecture/GalacticSoupLogical.slx` | Logical | 12 solution-role components describing *how* the functions are organized into cooperating logical units, 1:1 with the functional layer. Uses the typed interface dictionary `LogicalInterfaces.sldd`. |
-| `architecture/PhysicalHyperCook.slx` | Physical (Variant A) | Throughput/logistics-optimized physical realization — "HyperCook." *(in progress)* |
-| `architecture/PhysicalLeanBroth.slx` | Physical (Variant B) | Resource-budget-optimized physical realization — "LeanBroth." *(in progress)* |
-| `architecture/PhysicalIronLadle.slx` | Physical (Variant C) | Resilience/autonomy-optimized physical realization — "IronLadle." *(in progress)* |
+| `architecture/PhysicalHyperCook.slx` | Physical (Variant A) | Throughput/logistics-optimized physical realization — "HyperCook." |
+| `architecture/PhysicalLeanBroth.slx` | Physical (Variant B) | Resource-budget-optimized physical realization — "LeanBroth." |
+| `architecture/PhysicalIronLadle.slx` | Physical (Variant C) | Resilience/autonomy-optimized physical realization — "IronLadle." |
+| `architecture/GalacticSoupComplianceGate.slx` | Verification | Generated Requirements Table model formalizing the eight SR compliance gates; rebuilt from the requirement set by `analysis/buildComplianceGate.m`. Do not hand-edit. |
 | `requirements/StakeholderNeeds.slreqx` | Requirements | 15 stakeholder needs (SN-GS-001..015), imported from `../requirements/StakeholderNeeds.xlsx`. |
 | `requirements/SystemRequirements.slreqx` | Requirements | 28 system requirements (SR-GS-001..028), imported from `../requirements/SystemRequirements.xlsx`, Derive-linked to stakeholder needs. |
 
@@ -55,6 +56,7 @@ Design decisions and their rationale are recorded in [`docs/07_decision_log.md`]
 | [`docs/05_trade_study_methodology.md`](docs/05_trade_study_methodology.md) | Roll-up metric definitions, budget cap parsing, MCDA normalization/weighting/Monte Carlo method, threats to validity. |
 | [`docs/06_trade_study_results.md`](docs/06_trade_study_results.md) | Full trade study results: metrics, compliance gates, criteria/scenario scores, Monte Carlo win share, per-variant findings, caveats, recommendation. |
 | [`docs/07_decision_log.md`](docs/07_decision_log.md) | ADR-style architectural decision log. |
+| [`docs/08_formal_compliance_gate.md`](docs/08_formal_compliance_gate.md) | Formal SR compliance gate built on the Requirements Table block: design, generation, status harvesting, API gotchas, assessment. |
 
 ## Trade study summary
 
