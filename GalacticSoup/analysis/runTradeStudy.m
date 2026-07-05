@@ -1,7 +1,12 @@
-function trade = runTradeStudy()
-%RUNTRADESTUDY MCDA trade study over the three physical architecture variants.
+function trade = runTradeStudy(includeVariants)
+%RUNTRADESTUDY MCDA trade study over the physical architecture variants.
 %
-%   Consumes variantMetrics.mat (from runVariantAnalysis) and produces:
+%   trade = runTradeStudy() scores every variant in variantMetrics.mat.
+%   trade = runTradeStudy(includeVariants) restricts scoring to the given
+%   variant names (cellstr) - runFullAnalysis passes the subset that
+%   passed the formal compliance gate.
+%
+%   Produces:
 %     - tradeStudyResults.mat / tradeScores.csv    scores per scenario
 %     - mcWinShare.csv                             Monte Carlo win shares
 %     - ../docs/figures/*.png                      comparison charts
@@ -18,6 +23,18 @@ if ~isfolder(figDir), mkdir(figDir); end
 S = load(fullfile(anaDir, 'variantMetrics.mat'));
 R = S.results;
 caps = S.caps;
+
+% Fixed per-variant palette assigned by NAME, not position, so an excluded
+% variant never repaints the survivors (color follows the entity).
+palette = containers.Map( ...
+    {'HyperCook','LeanBroth','IronLadle'}, ...
+    {[42 120 214]/255, [27 175 122]/255, [237 161 0]/255});
+
+if nargin > 0 && ~isempty(includeVariants)
+    keep = ismember({R.Variant}, includeVariants);
+    assert(any(keep), 'None of the requested variants exist in variantMetrics.mat');
+    R = R(keep);
+end
 nV = numel(R);
 vnames = {R.Variant};
 
@@ -85,8 +102,9 @@ Tmc = table(vnames', winShare', 'VariableNames', {'Variant','WinShare'});
 writetable(Tmc, fullfile(anaDir, 'mcWinShare.csv'));
 
 % ===================== Charts =====================
-% Validated categorical palette (fixed slot order; light mode)
-cols = [42 120 214; 27 175 122; 237 161 0] / 255;   % blue, aqua, yellow
+% Per-variant colors resolved by name from the fixed palette
+cols = zeros(nV, 3);
+for v = 1:nV, cols(v,:) = palette(vnames{v}); end
 surf_ = [252 252 251] / 255;
 inkP = [11 11 11] / 255;
 inkS = [82 81 78] / 255;

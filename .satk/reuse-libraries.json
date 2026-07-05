@@ -1,0 +1,4 @@
+{
+  "confirmedNone": true,
+  "note": "No custom reusable Simulink libraries in this project. All models use built-in Simulink, Stateflow, Simscape, System Composer, and Requirements Toolbox blocks. Declared during behavioral-models branch work, 2026-07-05."
+}

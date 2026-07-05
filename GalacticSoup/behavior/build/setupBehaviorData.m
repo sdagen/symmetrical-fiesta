@@ -1,0 +1,123 @@
+function setupBehaviorData()
+%SETUPBEHAVIORDATA Create/refresh the behavioral-layer data dictionaries.
+%   Builds the dictionary chain
+%       BehaviorInterfaces.sldd  (shared mode/state codes)
+%         <- BehParamsCommon.sldd   (soup & thermal physics constants)
+%              <- BehParamsHyperCook.sldd / BehParamsLeanBroth.sldd /
+%                 BehParamsIronLadle.sldd  (variant instance parameters)
+%   and registers the behavior folders on the project path. Destructive and
+%   idempotent: existing dictionaries are recreated from scratch.
+%
+%   Component models link BehParamsCommon (and see Interfaces through the
+%   reference); variant plant models link their variant dictionary. Variant
+%   entries are plain design-data values bound to model-reference instance
+%   arguments in the plant models (see docs/09_behavioral_models.md #3).
+
+proj = currentProject;
+root = char(proj.RootFolder);
+dataDir = fullfile(root, 'behavior', 'data');
+
+% --- Project path: every folder whose artifacts resolve by filename ---
+folders = {'behavior/components','behavior/subsystems','behavior/data', ...
+           'behavior/plants','behavior/build','behavior/tests'};
+projPathFolders = {proj.ProjectPath.File};
+for i = 1:numel(folders)
+    f = fullfile(root, folders{i});
+    if ~any(strcmpi(projPathFolders, f))
+        addPath(proj, f);
+    end
+end
+
+% --- Recreate dictionaries (close all first so deletes succeed) ---
+Simulink.data.dictionary.closeAll('-discard');
+names = {'BehaviorInterfaces','BehParamsCommon','BehParamsHyperCook', ...
+         'BehParamsLeanBroth','BehParamsIronLadle'};
+for i = 1:numel(names)
+    f = fullfile(dataDir, [names{i} '.sldd']);
+    if isfile(f), delete(f); end
+end
+
+% Interfaces: shared mode/state codes (uint8; enum classes deliberately
+% avoided - see ADR-016 discussion in docs/09_behavioral_models.md)
+dIf = Simulink.data.dictionary.create(fullfile(dataDir, 'BehaviorInterfaces.sldd'));
+sIf = getSection(dIf, 'Design Data');
+modes = {'PLANT_STARTUP',uint8(0); 'PLANT_NOMINAL',uint8(1); ...
+         'PLANT_DEGRADED',uint8(2); 'PLANT_HALTED',uint8(3); ...
+         'VAT_IDLE',uint8(0); 'VAT_FILL',uint8(1); 'VAT_HEAT',uint8(2); ...
+         'VAT_SIMMER',uint8(3); 'VAT_DRAIN',uint8(4); 'VAT_CLEAN',uint8(5)};
+for i = 1:size(modes,1), addEntry(sIf, modes{i,1}, modes{i,2}); end
+saveChanges(dIf);
+
+% Common physics: one source of truth for soup/thermal constants
+dCo = Simulink.data.dictionary.create(fullfile(dataDir, 'BehParamsCommon.sldd'));
+addDataSource(dCo, 'BehaviorInterfaces.sldd');   % filename only (path-resolved)
+sCo = getSection(dCo, 'Design Data');
+common = { ...
+ 'Bowl_kg',        0.55;   ... % soup mass per bowl-equivalent
+ 'Soup_cp_JpkgK',  3900;   ... % specific heat of vegan soup
+ 'FillTemp_C',     12;     ... % chilled ingredient inlet temperature
+ 'Ambient_C',      25;     ... % habitat ambient
+ 'SimmerTemp_C',   95;     ... % target cook temperature
+ 'VatLoss_WpK',    15};        % convective loss coefficient (h*A)
+for i = 1:size(common,1), addEntry(sCo, common{i,1}, common{i,2}); end
+saveChanges(dCo);
+
+% --- Variant parameter sets ---
+% Values trace to the PhysicalProperties stereotype values on the physical
+% architecture components (see docs/04, docs/06 #1); batch vat cycle
+% parameters are derived so the nominal batch cycle reproduces the
+% stereotype throughput: cycle = BatchSize/Throughput.
+variants = struct( ...
+  'HyperCook', {{ ...
+    'HC_PrepRate_bph',160; 'HC_NumPrep',2; ...
+    'HC_CookRate_bph',90;  'HC_CookPowerFull_kW',50; 'HC_CookPowerIdle_kW',8; ...
+    'HC_CookTau_s',180; ...
+    'HC_QCRate_bph',400;   'HC_QCReject',0.02; 'HC_QCCalibPeriod_s',3600; 'HC_QCCalibTime_s',60; ...
+    'HC_PackRate_bph',340; ...
+    'Transport_Rate_bph',400; 'Transport_Latency_s',30; ...
+    'HC_StorageCap_bowls',2000; 'HC_StorageInit_bowls',1500; ...
+    'HC_Resupply_bph',330; 'HC_NumLines',4; ...
+    'HC_StaticPower_kW',298}}, ...   % stereotype power sum minus dynamic cook lines
+  'LeanBroth', {{ ...
+    'LB_PrepRate_bph',210; ...
+    'LB_BatchSize_bowls',55; 'LB_HeaterPower_kW',45; 'LB_VatThermalMass_JpK',130000; ...
+    'LB_FillRate_bps',0.5; 'LB_SimmerTime_s',1130; 'LB_DrainTime_s',200; 'LB_CleanTime_s',120; ...
+    'LB_QCRate_bph',230;   'LB_QCReject',0.03; 'LB_QCCalibPeriod_s',7200; 'LB_QCCalibTime_s',300; ...
+    'LB_PackRate_bph',220; ...
+    'Transport_Rate_bph',250; 'Transport_Latency_s',120; ...
+    'LB_StorageCap_bowls',800; 'LB_StorageInit_bowls',600; ...
+    'LB_Resupply_bph',215; 'LB_NumLines',2; ...
+    'LB_StaticPower_kW',149}}, ...   % stereotype power sum minus kettle heaters
+  'IronLadle', {{ ...
+    'IL_PrepRate_bph',80; ...
+    'IL_BatchSize_bowls',40; 'IL_HeaterPower_kW',32; 'IL_VatThermalMass_JpK',96000; ...
+    'IL_FillRate_bps',0.4; 'IL_SimmerTime_s',1182; 'IL_DrainTime_s',150; 'IL_CleanTime_s',120; ...
+    'IL_QCRate_bph',90;    'IL_QCReject',0.02; 'IL_QCCalibPeriod_s',5400; 'IL_QCCalibTime_s',90; ...
+    'IL_PackRate_bph',85; ...
+    'Transport_Rate_bph',300; 'Transport_Latency_s',60; ...
+    'IL_StorageCap_bowls',1200; 'IL_StorageInit_bowls',900; ...
+    'IL_Resupply_bph',245; 'IL_NumLines',3; ...
+    'IL_StaticPower_kW',267}});      % stereotype power sum minus cell vat heaters
+
+vNames = fieldnames(variants);
+for v = 1:numel(vNames)
+    d = Simulink.data.dictionary.create( ...
+        fullfile(dataDir, ['BehParams' vNames{v} '.sldd']));
+    addDataSource(d, 'BehParamsCommon.sldd');
+    s = getSection(d, 'Design Data');
+    entries = variants.(vNames{v});
+    for i = 1:size(entries,1)
+        addEntry(s, entries{i,1}, entries{i,2});
+    end
+    saveChanges(d);
+end
+Simulink.data.dictionary.closeAll();
+
+% --- Register dictionaries with the project ---
+projFiles = {proj.Files.Path};
+for i = 1:numel(names)
+    f = fullfile(dataDir, [names{i} '.sldd']);
+    if ~any(strcmpi(projFiles, f)), addFile(proj, f); end
+end
+fprintf('Behavior data ready: %d dictionaries in behavior/data, folders on path\n', numel(names));
+end

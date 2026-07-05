@@ -1,24 +1,35 @@
-function [results, gate, trade] = runFullAnalysis()
+function [results, gate, trade, beh] = runFullAnalysis()
 %RUNFULLANALYSIS End-to-end variant analysis chain with formal gating.
-%   1. runVariantAnalysis  - roll up metrics per variant (procedural flags)
-%   2. runComplianceGate   - formal verification via the Requirements Table
-%                            gate model; hard-errors on any disagreement
-%                            with the procedural flags
-%   3. runTradeStudy       - MCDA scoring; only runs if every variant that
-%                            enters scoring passed the formal gate
+%   1. runBehavioralAnalysis - simulate the three behavioral plant models
+%                              (Simulink/Stateflow/Simscape) for steady
+%                              throughput, energy, and fault retention
+%   2. runVariantAnalysis    - roll up metrics per variant; simulated
+%                              throughput/retention override the static
+%                              stage-table values (procedural flags)
+%   3. runComplianceGate     - formal verification via the Requirements
+%                              Table gate model; hard-errors on any
+%                              disagreement with the procedural flags
+%   4. runTradeStudy         - MCDA scoring over the variants that passed
+%                              the formal gate
 %
-%   The trade study intentionally sits downstream of the formal gate: a
-%   variant that fails formal compliance has no business being scored.
+%   A variant that fails the formal gate is EXCLUDED from scoring (it has
+%   no business being ranked against compliant designs) but remains in the
+%   metrics and gate outputs so the failure is visible and documented.
 
+beh = runBehavioralAnalysis();
 results = runVariantAnalysis();
 gate = runComplianceGate();
 
-nonCompliant = gate.Properties.RowNames(~gate.AllGatesPass);
+nonCompliant = gate.Properties.RowNames(~gate.AllGatesPass)';
 if ~isempty(nonCompliant)
-    error('gs:gateFailed', ...
-        'Formal compliance gate failed for: %s. Trade study not run.', ...
+    warning('gs:gateFailed', ...
+        'Formal compliance gate FAILED for: %s. Excluded from trade study scoring.', ...
         strjoin(nonCompliant, ', '));
 end
+compliant = gate.Properties.RowNames(gate.AllGatesPass)';
+assert(numel(compliant) >= 2, ...
+    'Fewer than two compliant variants (%s): no trade space left to study.', ...
+    strjoin(compliant, ', '));
 
-trade = runTradeStudy();
+trade = runTradeStudy(compliant);
 end

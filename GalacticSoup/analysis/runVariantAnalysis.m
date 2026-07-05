@@ -171,6 +171,28 @@ for v = 1:size(variants, 1)
     end
     r.N1Retention = max(0, min(1, worst));
 
+    % Behavioral override: when simulated plant metrics exist (see
+    % runBehavioralAnalysis), they replace the static stage-table
+    % throughput and N-1 retention. The static values are kept in
+    % Static_* fields for comparison; the OK_* gates and margins below
+    % always evaluate whichever values ended up in the primary fields.
+    r.Static_Throughput_bph = r.Throughput_bph;
+    r.Static_N1Retention    = r.N1Retention;
+    r.BehavioralSource      = false;
+    r.Energy_kWh_per_bowl   = NaN;
+    r.TimeToFirstOut_s      = NaN;
+    behFile = fullfile(anaDir, 'behavioralMetrics.mat');
+    if isfile(behFile)
+        B = load(behFile);
+        bi = strcmp({B.beh.Variant}, vname);
+        assert(nnz(bi) == 1, 'behavioralMetrics.mat has no entry for %s', vname);
+        r.Throughput_bph      = B.beh(bi).SimThroughput_bph;
+        r.N1Retention         = B.beh(bi).SimRetention;
+        r.Energy_kWh_per_bowl = B.beh(bi).Energy_kWh_per_bowl;
+        r.TimeToFirstOut_s    = B.beh(bi).TimeToFirstOut_s;
+        r.BehavioralSource    = true;
+    end
+
     % Compliance gates
     r.OK_Mass       = r.Mass_kg <= caps.Mass_kg;
     r.OK_Power      = r.Power_kW <= caps.Power_kW;

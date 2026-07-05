@@ -1,4 +1,4 @@
 Row,Mass,Power,Cost,Volume,Throughput,Automation,Operators,Gravity,AllGatesPass
 HyperCook,1,1,1,1,1,1,1,1,1
-LeanBroth,1,1,1,1,1,1,1,1,1
+LeanBroth,1,1,1,1,0,1,1,1,0
 IronLadle,1,1,1,1,1,1,1,1,1
