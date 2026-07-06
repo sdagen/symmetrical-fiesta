@@ -69,6 +69,7 @@ Design decisions and their rationale are recorded in [`docs/07_decision_log.md`]
 | [`docs/08_formal_compliance_gate.md`](docs/08_formal_compliance_gate.md) | Formal SR compliance gate built on the Requirements Table block: design, generation, status harvesting, API gotchas, assessment. |
 | [`docs/09_behavioral_models.md`](docs/09_behavioral_models.md) | Behavioral component library: componentization strategy, modeling abstractions, folder/data architecture, component behaviors, verification, tool gotchas. |
 | [`docs/10_behavioral_trade_update.md`](docs/10_behavioral_trade_update.md) | Trade study update with behavioral fidelity: simulated vs. static metrics, LeanBroth's SR-GS-002 failure, updated scenario/Monte Carlo results, recommendation, threats to validity. |
+| [`docs/explainers/README.md`](docs/explainers/README.md) | Plain-language explainer cards, one per analysis case in the chain. |
 
 ## Trade study summary
 
