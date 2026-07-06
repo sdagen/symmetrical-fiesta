@@ -14,10 +14,10 @@
 
 | | HyperCook | LeanBroth | EverSimmer |
 |---|---|---|---|
-| Mass (kg) | 14,320 | 6,170 | 11,120 |
+| Mass (kg) | 14,320 | 7,570 | 11,120 |
 | Power, rated (kW) | 498 | 239 | 363 |
-| Cost (kCr) | 1,980 | 880 | 1,905 |
-| Volume (m³) | 397 | 200 | 297 |
+| Cost (kCr) | 1,980 | 1,070 | 1,905 |
+| Volume (m³) | 397 | 240 | 297 |
 | Throughput, rated (bph) | 320 | 210 | 240 |
 | Automation | 0.944 | 0.800 | 0.956 |
 | Operators | 3.8 | 4.3 | 2.7 |

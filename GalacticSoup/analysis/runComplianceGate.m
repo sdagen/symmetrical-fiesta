@@ -67,6 +67,10 @@ for v = 1:nV
     end
 end
 
+% close the gate model: its embedded requirement set blocks slreq.clear
+% for any downstream code while the model remains loaded
+close_system(mdl, 0);
+
 gate = array2table(pass, 'VariableNames', gateNames, ...
     'RowNames', {R.Variant}');
 gate.AllGatesPass = all(pass, 2);
