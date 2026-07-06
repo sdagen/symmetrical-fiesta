@@ -23,9 +23,10 @@ The facility receives ingredient deliveries by rocket, stores and prepares them,
 | `architecture/` | System Composer models and interface dictionaries for the Functional, Logical, and Physical layers; the three Physical variant models each carry their behavioral content inline (see `behavior/` below) and link a per-variant wrapper dictionary, `Physical<Variant>Data.sldd`. |
 | `behavior/` | Behavioral component library (model references + subsystem references), data dictionaries, build scripts, and unit tests — instantiated inline inside the three physical architecture models rather than composed in separate plant models. See [`docs/09_behavioral_models.md`](docs/09_behavioral_models.md) / [`docs/10_behavioral_trade_update.md`](docs/10_behavioral_trade_update.md). |
 | `requirements/` | Requirements Toolbox sets (`.slreqx`) imported from the source spreadsheets in `../requirements/`, plus surrogate index files (`.slmx`) maintained by Requirements Toolbox. |
-| `analysis/` | Roll-up, formal compliance gate, and trade-study analysis scripts and outputs (`variantMetrics.csv`, `complianceGate.csv`, `tradeScores.csv`, `mcWinShare.csv`). Run the whole chain with `runFullAnalysis`. See [`docs/06_trade_study_results.md`](docs/06_trade_study_results.md) and [`docs/08_formal_compliance_gate.md`](docs/08_formal_compliance_gate.md). |
+| `analysis/` | Roll-up, formal compliance gate, and trade-study analysis scripts and outputs (`variantMetrics.csv`, `complianceGate.csv`, `tradeScores.csv`, `mcWinShare.csv`). Run the whole chain with `runFullAnalysis`; prove the results with `tests/runAllTests` — `runFullAnalysis` regenerates them, `runAllTests` verifies them. See [`docs/06_trade_study_results.md`](docs/06_trade_study_results.md), [`docs/08_formal_compliance_gate.md`](docs/08_formal_compliance_gate.md), and [`docs/11_test_organization.md`](docs/11_test_organization.md). |
+| `tests/` | System/analysis/traceability test tiers and the suite runner; run everything with `tests/runAllTests`. See [`docs/11_test_organization.md`](docs/11_test_organization.md). |
 | `docs/` | This project's systems-engineering documentation set — requirements analysis, architecture rationale, and decision log. |
-| `work/` | MATLAB project build cache (`slprj/` etc.). Not source-controlled content; safe to delete/regenerate. |
+| `work/` | MATLAB project build cache (`slprj/` etc.) and the derived, gitignored `work/coverage` test coverage report. Not source-controlled content; safe to delete/regenerate. |
 
 ## Model inventory
 
@@ -69,6 +70,7 @@ Design decisions and their rationale are recorded in [`docs/07_decision_log.md`]
 | [`docs/08_formal_compliance_gate.md`](docs/08_formal_compliance_gate.md) | Formal SR compliance gate built on the Requirements Table block: design, generation, status harvesting, API gotchas, assessment. |
 | [`docs/09_behavioral_models.md`](docs/09_behavioral_models.md) | Behavioral component library: componentization strategy, modeling abstractions, folder/data architecture, component behaviors, verification, tool gotchas. |
 | [`docs/10_behavioral_trade_update.md`](docs/10_behavioral_trade_update.md) | Trade study update with behavioral fidelity: simulated vs. static metrics, LeanBroth's SR-GS-002 failure, updated scenario/Monte Carlo results, recommendation, threats to validity. |
+| [`docs/11_test_organization.md`](docs/11_test_organization.md) | Analysis verification as a tagged MATLAB Test suite: the four tiers, project-metadata suite assembly, the golden-totals catch, the requirements-linking limitation, runtime notes. |
 | [`docs/explainers/README.md`](docs/explainers/README.md) | Plain-language explainer cards, one per analysis case in the chain. |
 
 ## Trade study summary
