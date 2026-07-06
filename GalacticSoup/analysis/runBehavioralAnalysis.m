@@ -15,7 +15,7 @@ function beh = runBehavioralAnalysis()
 %
 %   The worst-case fault per variant is the most damaging of the modeled
 %   fault points (serial single-string elements for HyperCook/LeanBroth,
-%   one full production cell for IronLadle) - see docs/09 #5.
+%   one full production cell for EverSimmer) - see docs/09 #5.
 %
 %   Writes behavioralMetrics.mat/.csv and docs/figures/behavioral_*.png.
 %   Results are consumed by runVariantAnalysis, which overrides its static
@@ -35,7 +35,7 @@ T_SS    = 7200;    % steady-state window start for nominal metrics
 plants = { ...
  'HyperCook', 'BehPlantHyperCook', 6, 5, 'ConveyorNetwork (serial single-string)'; ...
  'LeanBroth', 'BehPlantLeanBroth', 4, 3, 'PrepWorkstation (serial single-string)'; ...
- 'IronLadle', 'BehPlantIronLadle', 3, 1, 'ProductionCell1 (one of three cells)'};
+ 'EverSimmer', 'BehPlantEverSimmer', 3, 1, 'ProductionCell1 (one of three cells)'};
 
 beh = struct([]);
 traces = struct([]);

@@ -18,7 +18,7 @@ The numbers in this document come from the committed baseline with the LeanBroth
 
 ## 2. Simulated vs. static metrics
 
-| Metric | HyperCook | LeanBroth | IronLadle |
+| Metric | HyperCook | LeanBroth | EverSimmer |
 |---|---|---|---|
 | Static throughput (bph) | 320 | 210 | 240 |
 | Simulated steady throughput (bph) | 308.1 | 196.6 | 231.9 |
@@ -30,9 +30,9 @@ The numbers in this document come from the committed baseline with the LeanBroth
 | Mean power, kW | 479 | 160 | 281 |
 | Peak power, kW | 479 | 239 | 363 |
 
-Every variant loses throughput relative to its static stage-table value, because the static tables were lossless: a stage's rated bph flowed straight through to the next stage with no yield loss and no downtime. The behavioral QC station now removes a reject fraction (2% automatic inspection, 3% manual bench) and periodically drops offline for calibration, and both effects consume real throughput that the static roll-up never modeled. Batch plants (LeanBroth, IronLadle) additionally show a roughly one-hour cold start — hopper fill followed by the first heat/simmer cycle — before steady output is reached, versus 149 s for HyperCook's continuous line; this cold start does not change *steady-state* throughput but is a first observation of a cost that the static analysis had no mechanism to represent at all.
+Every variant loses throughput relative to its static stage-table value, because the static tables were lossless: a stage's rated bph flowed straight through to the next stage with no yield loss and no downtime. The behavioral QC station now removes a reject fraction (2% automatic inspection, 3% manual bench) and periodically drops offline for calibration, and both effects consume real throughput that the static roll-up never modeled. Batch plants (LeanBroth, EverSimmer) additionally show a roughly one-hour cold start — hopper fill followed by the first heat/simmer cycle — before steady output is reached, versus 149 s for HyperCook's continuous line; this cold start does not change *steady-state* throughput but is a first observation of a cost that the static analysis had no mechanism to represent at all.
 
-N-1 retention is close to the static estimate for IronLadle (0.673 simulated vs. 0.667 static — the triplicated-cell topology behaves close to its idealized third-of-capacity assumption) but the two single-string variants, which the static table already scored at 0% retention, remain at essentially zero under simulation: losing the one conveyor (HyperCook) or the one prep line (LeanBroth) still collapses the whole plant, confirming rather than revising the static finding.
+N-1 retention is close to the static estimate for EverSimmer (0.673 simulated vs. 0.667 static — the triplicated-cell topology behaves close to its idealized third-of-capacity assumption) but the two single-string variants, which the static table already scored at 0% retention, remain at essentially zero under simulation: losing the one conveyor (HyperCook) or the one prep line (LeanBroth) still collapses the whole plant, confirming rather than revising the static finding.
 
 ## 3. LeanBroth formally fails SR-GS-002
 
@@ -44,34 +44,34 @@ Recovery options exist but are not implemented in this update: a higher-grade QC
 
 LeanBroth is excluded from MCDA scoring for the remainder of this document (§4) per ADR-018.
 
-## 4. Updated trade results (HyperCook vs. IronLadle)
+## 4. Updated trade results (HyperCook vs. EverSimmer)
 
 With LeanBroth excluded, the trade study now scores two compliant variants.
 
-| Scenario | IronLadle | HyperCook | Winner |
+| Scenario | EverSimmer | HyperCook | Winner |
 |---|---|---|---|
-| Balanced | 0.80 | 0.20 | IronLadle |
-| ThroughputFirst | 0.65 | 0.35 | IronLadle |
-| CostLean | 0.90 | 0.10 | IronLadle |
-| MissionAssurance | 0.90 | 0.10 | IronLadle |
+| Balanced | 0.80 | 0.20 | EverSimmer |
+| ThroughputFirst | 0.65 | 0.35 | EverSimmer |
+| CostLean | 0.90 | 0.10 | EverSimmer |
+| MissionAssurance | 0.90 | 0.10 | EverSimmer |
 
-Monte Carlo weight sensitivity (5,000 Dirichlet draws, `rng(42)`, reproducible): **IronLadle 98.4%, HyperCook 1.6%**.
+Monte Carlo weight sensitivity (5,000 Dirichlet draws, `rng(42)`, reproducible): **EverSimmer 98.4%, HyperCook 1.6%**.
 
-IronLadle now wins **all four** named scenarios, including CostLean — where LeanBroth won at baseline (§5 of [`06_trade_study_results.md`](06_trade_study_results.md)) and where IronLadle placed second to LeanBroth by a wide margin. With only two variants left, min-max normalization is binary per criterion (whichever variant is better on a criterion scores 1, the other scores 0), so the scenario scores above compress to whichever side of 0.5 the scenario's weights fall on and carry less nuance than the three-variant baseline scores. The Monte Carlo win share and the "wins every scenario" pattern are the informative results here, not the individual score magnitudes.
+EverSimmer now wins **all four** named scenarios, including CostLean — where LeanBroth won at baseline (§5 of [`06_trade_study_results.md`](06_trade_study_results.md)) and where EverSimmer placed second to LeanBroth by a wide margin. With only two variants left, min-max normalization is binary per criterion (whichever variant is better on a criterion scores 1, the other scores 0), so the scenario scores above compress to whichever side of 0.5 the scenario's weights fall on and carry less nuance than the three-variant baseline scores. The Monte Carlo win share and the "wins every scenario" pattern are the informative results here, not the individual score magnitudes.
 
 ## 5. Figures
 
 ![Simulated nominal throughput](figures/behavioral_throughput.png)
-*Steady-state packaged output over time, all three variants — cold-start transients visible for LeanBroth and IronLadle, near-immediate ramp for HyperCook.*
+*Steady-state packaged output over time, all three variants — cold-start transients visible for LeanBroth and EverSimmer, near-immediate ramp for HyperCook.*
 
 ![Worst-case fault response](figures/behavioral_fault.png)
-*Single-fault injection at t = 2 h. HyperCook and LeanBroth collapse to zero output (serial single-string topology, no redundancy to fall back on); IronLadle steps down to roughly two-thirds output and the BehSupervisor chart transitions to Degraded rather than Halted.*
+*Single-fault injection at t = 2 h. HyperCook and LeanBroth collapse to zero output (serial single-string topology, no redundancy to fall back on); EverSimmer steps down to roughly two-thirds output and the BehSupervisor chart transitions to Degraded rather than Halted.*
 
 ## 6. Recommendation
 
-**ADR-009 (IronLadle as baseline) is reinforced, not revised.** The resilience advantage that the static roll-up could only assert as a stereotype-derived percentage (66.7% N-1 retention) is now demonstrated dynamically: fault injection produces the graceful two-thirds step-down and Degraded-mode transition in §5, not merely an arithmetic capacity number. IronLadle's energy per bowl (1.212 kWh) lands in the middle of the field, between LeanBroth's more efficient batch process (0.815 kWh) and HyperCook's continuous-line draw (1.556 kWh) — a new data point the static analysis had no mechanism to produce, since it never modeled actual power draw against actual throughput.
+**ADR-009 (EverSimmer as baseline) is reinforced, not revised.** The resilience advantage that the static roll-up could only assert as a stereotype-derived percentage (66.7% N-1 retention) is now demonstrated dynamically: fault injection produces the graceful two-thirds step-down and Degraded-mode transition in §5, not merely an arithmetic capacity number. EverSimmer's energy per bowl (1.212 kWh) lands in the middle of the field, between LeanBroth's more efficient batch process (0.815 kWh) and HyperCook's continuous-line draw (1.556 kWh) — a new data point the static analysis had no mechanism to produce, since it never modeled actual power draw against actual throughput.
 
-Cold start is a genuinely new operational consideration this update surfaces: IronLadle and LeanBroth both take on the order of an hour to reach steady output from a cold hopper, while HyperCook is at steady output in 149 s. This favors HyperCook specifically for surge-restart scenarios (e.g., recovering from a planned full-plant shutdown under time pressure) even though it does not change the overall recommendation.
+Cold start is a genuinely new operational consideration this update surfaces: EverSimmer and LeanBroth both take on the order of an hour to reach steady output from a cold hopper, while HyperCook is at steady output in 149 s. This favors HyperCook specifically for surge-restart scenarios (e.g., recovering from a planned full-plant shutdown under time pressure) even though it does not change the overall recommendation.
 
 Follow-ups:
 

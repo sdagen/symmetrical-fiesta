@@ -36,13 +36,13 @@ A trade study needs alternatives that are actually different, not one design wit
 
 ![The LeanBroth variant](images/PhysicalLeanBroth.png)
 
-**IronLadle** chases resilience. Three fully independent production cells, each containing its own prep, cook, QC, and packaging units plus a local cell controller. A distributed control triad, redundant reactors, autonomous robotic transport. Lose any single cell and you still make soup.
+**EverSimmer** chases resilience. Three fully independent production cells, each containing its own prep, cook, QC, and packaging units plus a local cell controller. A distributed control triad, redundant reactors, autonomous robotic transport. Lose any single cell and you still make soup.
 
-![The IronLadle variant](images/PhysicalIronLadle.png)
+![The EverSimmer variant](images/PhysicalEverSimmer.png)
 
 The production cell is my favorite part of this architecture. It's a composite component with a complete miniature production chain inside, and System Composer's hierarchy handles it naturally:
 
-![Inside an IronLadle production cell](images/IronLadle_ProductionCell.png)
+![Inside an EverSimmer production cell](images/EverSimmer_ProductionCell.png)
 
 **A design decision worth pausing on:** we modeled the variants as three separate architecture models rather than using System Composer variant components inside a single model. Variant components are great when alternatives differ at a component or two. Here the variants differ in topology, hierarchy depth, and even component count, and each one needs its own allocation set from the logical layer and its own roll-up analysis. Three models with a shared interface dictionary and a shared stereotype profile turned out to be much cleaner. That decision, along with eight others, went into an ADR-style decision log in the repo, which I've found is the single most useful artifact for picking the work back up weeks later.
 
@@ -50,11 +50,11 @@ The production cell is my favorite part of this architecture. It's a composite c
 
 Architecture pictures don't win trade studies. Numbers do. Every component in all three variants carries the same stereotype with eleven properties: mass, power, cost, volume, throughput capacity, automation level, operators required, MTBF, gravity rating, and a couple of analysis flags.
 
-One stereotype for everything was another deliberate choice. It would have been more "correct" to give reactors a power-generation stereotype and cook lines a production stereotype, but a single uniform stereotype means one roll-up function works on every component of every variant, including IronLadle's nested cells. The PostOrder iterator visits children before parents, so composite components accumulate their interiors automatically and arbitrary nesting depth costs nothing.
+One stereotype for everything was another deliberate choice. It would have been more "correct" to give reactors a power-generation stereotype and cook lines a production stereotype, but a single uniform stereotype means one roll-up function works on every component of every variant, including EverSimmer's nested cells. The PostOrder iterator visits children before parents, so composite components accumulate their interiors automatically and arbitrary nesting depth costs nothing.
 
 Two metrics resisted simple roll-up, and I think they're the instructive ones:
 
-**Throughput is a bottleneck problem, not a sum.** A serial production chain runs at the speed of its slowest stage, parallel units within a stage add capacity, and an IronLadle cell's capacity is the minimum over its own internal chain. Stereotype properties have no notion of "these four components are redundant with each other," so we encoded each variant's stage topology in a small table inside the analysis function. I flagged this in the methodology doc as the main maintenance risk: rename a component in the model and the stage table must follow by hand.
+**Throughput is a bottleneck problem, not a sum.** A serial production chain runs at the speed of its slowest stage, parallel units within a stage add capacity, and an EverSimmer cell's capacity is the minimum over its own internal chain. Stereotype properties have no notion of "these four components are redundant with each other," so we encoded each variant's stage topology in a small table inside the analysis function. I flagged this in the methodology doc as the main maintenance risk: rename a component in the model and the stage table must follow by hand.
 
 **The budget caps are parsed from the requirements at analysis time.** Instead of hard-coding 15000 in the analysis script, a helper reads SR-GS-011 from the .slreqx and extracts the number from the requirement text. If a stakeholder relaxes the mass budget next month, the analysis picks it up on the next run with zero code changes. Requirements as the single source of truth, mechanically enforced.
 
@@ -64,7 +64,7 @@ All three variants pass all eight requirement gates. That surprised me at first,
 
 ![Budget utilization against the requirement caps](images/budget_utilization.png)
 
-HyperCook passes power at 99.6% of budget and volume at 99.3%. One requirements change and it's non-compliant. LeanBroth has enormous budget headroom but passes the automation requirement at exactly 0.80 against a floor of 0.80. Zero margin, just from the other direction. IronLadle sits in the comfortable middle on everything except cost, where its margin is only 4.7%.
+HyperCook passes power at 99.6% of budget and volume at 99.3%. One requirements change and it's non-compliant. LeanBroth has enormous budget headroom but passes the automation requirement at exactly 0.80 against a floor of 0.80. Zero margin, just from the other direction. EverSimmer sits in the comfortable middle on everything except cost, where its margin is only 4.7%.
 
 For the actual scoring we used a weighted-sum MCDA over seven criteria (throughput margin, resource margin, cost margin, automation, crew margin, availability, and N-1 capacity retention), min-max normalized across the three variants:
 
@@ -74,13 +74,13 @@ Weights are where trade studies go to get argued about, so we scored four stakeh
 
 ![Scores under the four weighting scenarios](images/scenario_scores.png)
 
-IronLadle wins three of the four. The one that made me look twice was ThroughputFirst, which I fully expected HyperCook to take. It didn't, because HyperCook's razor-thin budget margins drag down every other criterion, and a 35% weight on throughput can't carry six weak scores. LeanBroth takes CostLean, exactly as designed.
+EverSimmer wins three of the four. The one that made me look twice was ThroughputFirst, which I fully expected HyperCook to take. It didn't, because HyperCook's razor-thin budget margins drag down every other criterion, and a 35% weight on throughput can't carry six weak scores. LeanBroth takes CostLean, exactly as designed.
 
 But four hand-picked weight vectors are still four opinions. To guard against weight-picking bias, the analysis draws 5,000 random weight vectors uniformly from the simplex and counts who wins:
 
 ![Monte Carlo win share over 5,000 random weightings](images/mc_winshare.png)
 
-IronLadle wins 84% of all possible stakeholder priorities. That's the number that turns "the committee picked IronLadle" into "IronLadle is robust to whatever the committee thinks." The recommendation shipped with honest caveats attached: the 4.7% cost margin needs a reserve or a descope plan, and IronLadle's degraded mode after losing a cell (160 bowls per hour) satisfies the graceful degradation requirement but sits below the nominal 200, so it's a contingency mode, not a compliant steady state.
+EverSimmer wins 84% of all possible stakeholder priorities. That's the number that turns "the committee picked EverSimmer" into "EverSimmer is robust to whatever the committee thinks." The recommendation shipped with honest caveats attached: the 4.7% cost margin needs a reserve or a descope plan, and EverSimmer's degraded mode after losing a cell (160 bowls per hour) satisfies the graceful degradation requirement but sits below the nominal 200, so it's a contingency mode, not a compliant steady state.
 
 ## What I learned about working with the agent
 

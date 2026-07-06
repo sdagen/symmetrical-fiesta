@@ -1,6 +1,6 @@
 # 04 — Physical Architecture Variants
 
-Models (in progress): `../architecture/PhysicalHyperCook.slx`, `../architecture/PhysicalLeanBroth.slx`, `../architecture/PhysicalIronLadle.slx`
+Models (in progress): `../architecture/PhysicalHyperCook.slx`, `../architecture/PhysicalLeanBroth.slx`, `../architecture/PhysicalEverSimmer.slx`
 
 The physical layer realizes each logical component (see [`03_logical_architecture.md`](03_logical_architecture.md)) as concrete hardware. Rather than model the physical layer as a single System Composer model with variant components, the project uses **three independent physical models**, one per architecture concept, so each can be rolled up and allocated independently before comparison (see [`07_decision_log.md`](07_decision_log.md) ADR-001). All physical components carry quantitative properties via the `PhysicalProperties` stereotype (`Mass_kg`, `Power_kW`, `Cost_kCredits`, `Volume_m3`, `Throughput_bph`, `AutomationLevel`, `OperatorsRequired`, `MTBF_hr`, `GravityRating_g`, `UseParallelThroughput`) defined in the `GalacticSoupProfile` profile, enabling a uniform roll-up analysis across variants (ADR-007).
 
@@ -58,13 +58,13 @@ The physical layer realizes each logical component (see [`03_logical_architectur
 
 **SRs this variant stresses.** SR-GS-011, SR-GS-012, SR-GS-013, SR-GS-014 (mass/power/cost/volume budgets) most favorably. It is expected to be weakest, or run closest to the limit, against SR-GS-002/SR-GS-022 (throughput/cooking capacity, "meet not exceed"), SR-GS-003 (automation level, given heavier reliance on the 5-operator crew), SR-GS-018 (rocket turnaround, given shared rather than dedicated cranes), and SR-GS-026 (fault tolerance, given single-string kettles and prep).
 
-## 3. Variant C — "IronLadle" (resilience/autonomy-optimized)
+## 3. Variant C — "EverSimmer" (resilience/autonomy-optimized)
 
 **Philosophy.** Eliminate single points of failure. The plant is organized as three fully independent production cells, each with its own prep, cooking, QC, and packaging equipment, so the loss of any one cell degrades gracefully to two-thirds capacity rather than halting production. Targets the highest automation level of the three variants and the smallest operator headcount, accepting higher mass and cost as the price of resilience and autonomy.
 
 **Component concept list.**
 
-| Logical component | IronLadle physical concept |
+| Logical component | EverSimmer physical concept |
 |---|---|
 | PrepStation, CookingUnit, QualityControlUnit, PackagingUnit | Triplicated: one full prep→cook→QC→package chain per production cell (×3 independent cells) |
 | ReceivingDock / ShippingBay / RocketFleetSystem | 3 independent pads, one dedicated per production cell |
@@ -83,7 +83,7 @@ The physical layer realizes each logical component (see [`03_logical_architectur
 
 ## 4. Cross-variant comparison summary
 
-| Dimension | HyperCook | LeanBroth | IronLadle |
+| Dimension | HyperCook | LeanBroth | EverSimmer |
 |---|---|---|---|
 | Primary optimization axis | Throughput / logistics | Resource budgets | Resilience / autonomy |
 | Production topology | 4 parallel centralized lines | 2 centralized batch kettles | 3 independent cells |

@@ -44,11 +44,11 @@ All 24 variant-gate checks pass and agree with the baseline procedural flags ([`
 |---|---|---|---|---|---|---|---|---|
 | HyperCook | pass | pass | pass | pass | pass | pass | pass | pass |
 | LeanBroth | pass | pass | pass | pass | pass | pass | pass | pass |
-| IronLadle | pass | pass | pass | pass | pass | pass | pass | pass |
+| EverSimmer | pass | pass | pass | pass | pass | pass | pass | pass |
 
 A deliberate negative test (HyperCook metrics with power inflated to 600 kW against the 500 kW cap) flagged exactly the Power row and no others, confirming the gate detects violations and localizes them to the right requirement.
 
-The trade study rerun downstream of the gate reproduces the baseline results exactly (deterministic with `rng(42)`): IronLadle wins Balanced/ThroughputFirst/MissionAssurance and 84.0% of the Monte Carlo weight draws. This is the expected outcome: the gate changes *how compliance is established*, not the metric values or scoring.
+The trade study rerun downstream of the gate reproduces the baseline results exactly (deterministic with `rng(42)`): EverSimmer wins Balanced/ThroughputFirst/MissionAssurance and 84.0% of the Monte Carlo weight draws. This is the expected outcome: the gate changes *how compliance is established*, not the metric values or scoring.
 
 ## 5. Implementation notes and API gotchas (R2026a)
 

@@ -13,14 +13,14 @@ The architectural components are the componentization guide. Every physical vari
 | `BehStorage` | Model reference | IngredientStorageUnit concepts (ColdStorageVault, ColdStoreLocker, DualZoneStore, hoppers) | Bounded buffer integrator: level, starvation, overflow |
 | `BehPrepUnit` | Model reference | RoboticPrepLine, PrepWorkstation, CellPrepUnit | Rate-limited processing with startup lag |
 | `BehCookLine` | Model reference | ContinuousCookLine1..4 (HyperCook) | Continuous rate-limited cooking, load-dependent power draw |
-| `BehCookVat` | Model reference | BatchKettle1/2 (LeanBroth), CellCookVat (IronLadle) | **Stateflow** batch sequencer (Idle→Fill→Heat→Simmer→Drain→Clean) driving a **Simscape** thermal network (heater source, thermal mass, convective loss); throughput *emerges* from the batch cycle |
+| `BehCookVat` | Model reference | BatchKettle1/2 (LeanBroth), CellCookVat (EverSimmer) | **Stateflow** batch sequencer (Idle→Fill→Heat→Simmer→Drain→Clean) driving a **Simscape** thermal network (heater source, thermal mass, convective loss); throughput *emerges* from the batch cycle |
 | `BehQCStation` | Model reference | InlineQCScanner, QCBench, CellQCSensor | **Stateflow** inspection modes incl. periodic calibration downtime; reject-fraction yield loss |
 | `BehPackager` | Model reference | HighSpeedPackagingLine, SemiAutoPackager, CellPackager | Rate-limited packaging with backlog |
 | `BehSupervisor` | Model reference | ProductionControlSystem concepts (CentralControlComputer, OpsConsole, ControlTriad) | **Stateflow** plant modes (Startup/Nominal/Degraded/Halted), per-line enable/disable on health loss |
-| `BehProductionCell` | Model reference (composite) | ProductionCell1..3 (IronLadle) | Composes BehPrepUnit→BehCookVat→BehQCStation→BehPackager, mirroring the architecture's cell decomposition |
+| `BehProductionCell` | Model reference (composite) | ProductionCell1..3 (EverSimmer) | Composes BehPrepUnit→BehCookVat→BehQCStation→BehPackager, mirroring the architecture's cell decomposition |
 | `SubTransport` | **Subsystem reference** (masked) | ConveyorNetwork, AGVCartPool, RoboTransportSwarm | Transfer-rate saturation + transport latency |
 | `SubFaultGate` | **Subsystem reference** | (cross-cutting) | Health/enable gating of a flow |
-| `BehPlantHyperCook` / `BehPlantLeanBroth` / `BehPlantIronLadle` | Top models | The three physical variants | Variant-specific composition and multiplicity of the above |
+| `BehPlantHyperCook` / `BehPlantLeanBroth` / `BehPlantEverSimmer` | Top models | The three physical variants | Variant-specific composition and multiplicity of the above |
 
 Model references were chosen for the stateful production roles (independent simulation and unit testing, per-instance parameterization via model arguments, incremental build); subsystem references for the small stateless/utility pieces where a separate model interface would be ceremony (ADR-013).
 
@@ -42,13 +42,13 @@ behavior/
                 BehParamsCommon.sldd      soup/thermal physics constants
                 BehParamsHyperCook.sldd   variant instance parameters   (references Common)
                 BehParamsLeanBroth.sldd   variant instance parameters   (references Common)
-                BehParamsIronLadle.sldd   variant instance parameters   (references Common)
-  plants/       BehPlantHyperCook BehPlantLeanBroth BehPlantIronLadle  (top models)
+                BehParamsEverSimmer.sldd   variant instance parameters   (references Common)
+  plants/       BehPlantHyperCook BehPlantLeanBroth BehPlantEverSimmer  (top models)
   build/        setupBehaviorData.m and model build/rebuild scripts
   tests/        matlab.unittest classes, one per component + plant-level
 ```
 
-Parameterization contract (ADR-016): component models declare **model arguments** (instance parameters) with neutral defaults in their model workspaces; variant plant models link their variant dictionary and bind each model-reference instance's arguments to named dictionary entries (`HC_*`, `LB_*`, `IL_*`). Component models link only `BehaviorInterfaces.sldd` + `BehParamsCommon.sldd` — they carry no variant knowledge, which is what keeps them reusable and independently testable.
+Parameterization contract (ADR-016): component models declare **model arguments** (instance parameters) with neutral defaults in their model workspaces; variant plant models link their variant dictionary and bind each model-reference instance's arguments to named dictionary entries (`HC_*`, `LB_*`, `ES_*`). Component models link only `BehaviorInterfaces.sldd` + `BehParamsCommon.sldd` — they carry no variant knowledge, which is what keeps them reusable and independently testable.
 
 ## 4. Component behaviors
 
@@ -65,14 +65,14 @@ Parameterization contract (ADR-016): component models declare **model arguments*
 *The Idle→Fill→Heat→Simmer→Drain→Clean sequencer, expanded.*
 
 ![BehProductionCell composition](figures/beh_productioncell_model.png)
-*BehProductionCell: BehPrepUnit→BehCookVat→BehQCStation→BehPackager, one IronLadle cell.*
+*BehProductionCell: BehPrepUnit→BehCookVat→BehQCStation→BehPackager, one EverSimmer cell.*
 
-![IronLadle plant model](figures/beh_plant_ironladle.png)
-*BehPlantIronLadle: three BehProductionCell instances under one BehSupervisor.*
+![EverSimmer plant model](figures/beh_plant_eversimmer.png)
+*BehPlantEverSimmer: three BehProductionCell instances under one BehSupervisor.*
 
 ## 5. Simulated metrics feeding the trade study
 
-Per variant, from `runBehavioralAnalysis.m`: steady-state packaged throughput (bph, nominal), time-to-first-output (s), energy per bowl (kWh, integrated actual power including physical heater duty), and worst-case single-fault retained throughput (fault injected mid-run into the variant's weakest point: a serial single-string element for HyperCook/LeanBroth, one full cell for IronLadle). See [`10_behavioral_trade_update.md`](10_behavioral_trade_update.md) for how these replace the static stage-table values in the roll-up, gate, and MCDA, and for the results.
+Per variant, from `runBehavioralAnalysis.m`: steady-state packaged throughput (bph, nominal), time-to-first-output (s), energy per bowl (kWh, integrated actual power including physical heater duty), and worst-case single-fault retained throughput (fault injected mid-run into the variant's weakest point: a serial single-string element for HyperCook/LeanBroth, one full cell for EverSimmer). See [`10_behavioral_trade_update.md`](10_behavioral_trade_update.md) for how these replace the static stage-table values in the roll-up, gate, and MCDA, and for the results.
 
 ## 6. Verification
 
