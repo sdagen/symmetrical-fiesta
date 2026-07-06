@@ -1,4 +1,4 @@
-Variant,SimThroughput_bph,TimeToFirstOut_s,Energy_kWh_per_bowl,MeanPower_kW,PeakPower_kW,SimRetention,WorstFault
-HyperCook,308.115706955492,150,1.55569262622035,479.333333333347,479.333333333331,1.99038447696896e-49,ConveyorNetwork (serial single-string)
-LeanBroth,196.551296809202,3563.81688003155,0.815308790130034,160.248437716984,239,1.37695055110484e-41,PrepWorkstation (serial single-string)
-EverSimmer,231.896600438494,3500,1.21163196356497,280.971392862103,363,0.673269927656841,ProductionCell1 (one of three cells)
+Variant,SimThroughput_bph,TimeToFirstOut_s,Energy_kWh_per_bowl,MeanPower_kW,PeakPower_kW,SimRetention,WorstFault,FaultEndMode
+HyperCook,308.369604701756,119,1.55441173846211,479.333333333347,479.333333333331,7.71321048019923e-55,InlineQCScanner (serial single-string),1
+LeanBroth,196.789905614907,3443.81688003152,0.814383743410159,160.260935981114,239,1.84493278307533e-42,PrepWorkstation (serial single-string),1
+EverSimmer,231.900008574849,3439,1.2116141567224,280.971392862103,363,0.672454363951697,ProductionCell1 (one of three cells),2

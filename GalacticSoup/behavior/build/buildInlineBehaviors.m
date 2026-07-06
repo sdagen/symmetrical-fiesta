@@ -226,11 +226,365 @@ fprintf('%s: inline behaviors built\n', mdl);
 end
 
 % ======================================================================
-function buildHyperCook() %#ok<DEFNU>
-error('HyperCook section not yet written');
+function buildHyperCook()
+mdl = 'PhysicalHyperCook';
+mdlA = systemcomposer.loadModel(mdl);
+set_param(mdl, 'SolverType','Variable-step', 'StopTime','14400');
+mws = get_param(mdl,'ModelWorkspace');
+for v = {'Fault_T_Prep1','Fault_T_Prep2','Fault_T_Cook1','Fault_T_Cook2', ...
+         'Fault_T_Cook3','Fault_T_Cook4','Fault_T_QC','Fault_T_Pack'}
+    assignin(mws, v{1}, 1e9);
 end
-function buildEverSimmer() %#ok<DEFNU>
-error('EverSimmer section not yet written');
+
+p = beh(mdlA, [mdl '/LaunchPadComplex']);
+inEl(p,'loadedShipment','flow_bps');
+outs = makeOuts(p,'inboundCargo','IngredientPallet', {'palletId','0';'mass_kg','0';'temp_C','4'});
+rs = addB(p,'ResupplyRate','simulink/Sources/Constant',{'Value','HC_Resupply_bph/3600'});
+line(p, rs, outs('flow_bps'));
+outs = makeOuts(p,'outboundShipments','SealedContainerBatch', {'batchId','0';'count','0';'sealRating_days','365'});
+passThrough(p, 'in_loadedShipment', outs('flow_bps'), 360/3600);
+stubStatus(p,'statusFleet', '20', '1');
+
+p = beh(mdlA, [mdl '/CargoGantryDock']);
+inEl(p,'inboundCargo','flow_bps');
+outs = makeOuts(p,'receivedIngredients','IngredientPallet', {'palletId','0';'mass_kg','0';'temp_C','4'});
+passThrough(p, 'in_inboundCargo', outs('flow_bps'), 400/3600);
+stubStatus(p,'statusReceive', '15', '1');
+
+hcStores = {'ColdStorageVault','stagedCold','stockCold','statusColdStore','40'; ...
+            'AmbientStorageSilo','stagedAmbient','stockAmbient','statusAmbStore','10'};
+for s = 1:2
+    p = beh(mdlA, [mdl '/' hcStores{s,1}]);
+    inEl(p,'receivedIngredients','flow_bps');
+    inEl(p,'directive','setpoint');
+    g = addB(p,'HalfIn','simulink/Math Operations/Gain',{'Gain','0.5'});
+    line(p, 'in_receivedIngredients', g);
+    m = addRef(p,'Store','BehStorage', {'Capacity_bowls','HC_StorageCap_bowls/2'; ...
+        'InitLevel_bowls','HC_StorageInit_bowls/2'});
+    line(p, g, [m '/1']);
+    d = addB(p,'DrawRate','simulink/Sources/Constant',{'Value','HC_PrepRate_bph/3600'});
+    line(p, d, [m '/2']);
+    outs = makeOuts(p, hcStores{s,2}, 'IngredientPallet', {'palletId','0';'mass_kg','0';'temp_C','4'});
+    lineTo(p, [m '/1'], outs('flow_bps'));
+    makeOuts(p, hcStores{s,3}, 'StockData', {'itemId','1';'qty_units','800';'error_pct','0'});
+    stubStatus(p, hcStores{s,4}, hcStores{s,5}, '1');
+    term(p, [m '/2']); term(p, [m '/3']);
+end
+
+hcPreps = {'RoboticPrepLine1','stagedCold','preppedBatch1','statusPrep1','Fault_T_Prep1'; ...
+           'RoboticPrepLine2','stagedAmbient','preppedBatch2','statusPrep2','Fault_T_Prep2'};
+for s = 1:2
+    p = beh(mdlA, [mdl '/' hcPreps{s,1}]);
+    inEl(p, hcPreps{s,2}, 'flow_bps');
+    inEl(p,'directive','setpoint');
+    gate = faultGate(p, hcPreps{s,5});
+    en = enableOf(p, gate);
+    m = addRef(p,'Prep','BehPrepUnit', {'PrepRate_bph','HC_PrepRate_bph'});
+    line(p, ['in_' hcPreps{s,2}], [m '/1']); lineTo(p, [en '/1'], [m '/2']);
+    outs = makeOuts(p, hcPreps{s,3}, 'PreparedBatch', {'batchId','0';'recipeId','0'});
+    lineTo(p, [m '/1'], outs('flow_bps'));
+    kg = addB(p,'ToKgPerHr','simulink/Math Operations/Gain',{'Gain','0.55*3600'});
+    lineTo(p, [m '/1'], [kg '/1']); lineTo(p, [kg '/1'], outs('mass_kg'));
+    stubStatus(p, hcPreps{s,4}, '25', gate);
+    term(p, [m '/2']);
+end
+
+hcCooks = {'ContinuousCookLine1','preppedBatch1','cookedSoup1','statusCook1','Fault_T_Cook1'; ...
+           'ContinuousCookLine2','preppedBatch1','cookedSoup2','statusCook2','Fault_T_Cook2'; ...
+           'ContinuousCookLine3','preppedBatch2','cookedSoup3','statusCook3','Fault_T_Cook3'; ...
+           'ContinuousCookLine4','preppedBatch2','cookedSoup4','statusCook4','Fault_T_Cook4'};
+for s = 1:4
+    p = beh(mdlA, [mdl '/' hcCooks{s,1}]);
+    inEl(p, hcCooks{s,2}, 'flow_bps');
+    inEl(p,'directive','setpoint');
+    g = addB(p,'HalfShare','simulink/Math Operations/Gain',{'Gain','0.5'});
+    line(p, ['in_' hcCooks{s,2}], g);
+    gate = faultGate(p, hcCooks{s,5});
+    en = enableOf(p, gate);
+    m = addRef(p,'Cook','BehCookLine', {'CookRate_bph','HC_CookRate_bph'; ...
+        'PowerFull_kW','HC_CookPowerFull_kW'; 'PowerIdle_kW','HC_CookPowerIdle_kW'; ...
+        'CookTau_s','HC_CookTau_s'});
+    line(p, g, [m '/1']); lineTo(p, [en '/1'], [m '/2']);
+    outs = makeOuts(p, hcCooks{s,3}, 'SoupStream', {'batchId','0';'temp_C','90';'contamination_ppm','0'});
+    lineTo(p, [m '/1'], outs('flow_bps'));
+    lit = addB(p,'ToLitres','simulink/Math Operations/Gain',{'Gain','1800'});
+    lineTo(p, [m '/1'], [lit '/1']); lineTo(p, [lit '/1'], outs('volume_L'));
+    souts = makeOuts(p, hcCooks{s,4}, 'StatusBus', {'unitId',num2str(s);'opState','1';'faultCode','0'});
+    lineTo(p, [m '/2'], souts('power_kW'));
+    lineTo(p, [gate '/1'], souts('health'));
+end
+
+p = beh(mdlA, [mdl '/InlineQCScanner']);
+for s = 1:4, inEl(p, sprintf('cookedSoup%d',s), 'flow_bps'); end
+inEl(p,'directive','setpoint');
+sm = addB(p,'SoupSum','simulink/Math Operations/Add',{'Inputs','++++'});
+for s = 1:4, lineTo(p, sprintf('in_cookedSoup%d/1',s), sprintf('%s/%d',sm,s)); end
+sg = addRef(p,'Surge','BehStorage', {'Capacity_bowls','120'; 'InitLevel_bowls','0'});
+line(p, sm, sg);
+dr = addB(p,'QCDraw','simulink/Sources/Constant',{'Value','HC_QCRate_bph/3600'});
+lineTo(p, [dr '/1'], [sg '/2']);
+gate = faultGate(p, 'Fault_T_QC');
+en = enableOf(p, gate);
+m = addRef(p,'QC','BehQCStation', {'QCRate_bph','HC_QCRate_bph'; 'RejectFrac','HC_QCReject'; ...
+    'CalibPeriod_s','HC_QCCalibPeriod_s'; 'CalibTime_s','HC_QCCalibTime_s'});
+lineTo(p, [sg '/1'], [m '/1']); lineTo(p, [en '/1'], [m '/2']);
+outs = makeOuts(p,'approvedSoup','SoupStream', {'batchId','0';'temp_C','90';'contamination_ppm','0'});
+lineTo(p, [m '/1'], outs('flow_bps'));
+lit = addB(p,'ToLitres','simulink/Math Operations/Gain',{'Gain','1800'});
+lineTo(p, [m '/1'], [lit '/1']); lineTo(p, [lit '/1'], outs('volume_L'));
+stubStatus(p,'statusQA', '10', gate);
+term(p, [m '/2']); term(p, [m '/3']); term(p, [sg '/2']); term(p, [sg '/3']);
+
+p = beh(mdlA, [mdl '/HighSpeedPackagingLine']);
+inEl(p,'approvedSoup','flow_bps');
+inEl(p,'directive','setpoint');
+sg = addRef(p,'Surge','BehStorage', {'Capacity_bowls','80'; 'InitLevel_bowls','0'});
+line(p, 'in_approvedSoup', sg);
+dr = addB(p,'PackDraw','simulink/Sources/Constant',{'Value','HC_PackRate_bph/3600'});
+lineTo(p, [dr '/1'], [sg '/2']);
+gate = faultGate(p, 'Fault_T_Pack');
+en = enableOf(p, gate);
+m = addRef(p,'Pack','BehPackager', {'PackRate_bph','HC_PackRate_bph'});
+lineTo(p, [sg '/1'], [m '/1']); lineTo(p, [en '/1'], [m '/2']);
+outs = makeOuts(p,'sealedContainers','SealedContainerBatch', {'batchId','0';'count','0';'sealRating_days','365'});
+lineTo(p, [m '/1'], outs('flow_bps'));
+stubStatus(p,'statusPack', '35', gate);
+term(p, [sg '/2']); term(p, [sg '/3']);
+
+p = beh(mdlA, [mdl '/CargoLoaderGantry']);
+inEl(p,'sealedContainers','flow_bps');
+outs = makeOuts(p,'loadedShipment','SealedContainerBatch', {'batchId','0';'count','0';'sealRating_days','365'});
+passThrough(p, 'in_sealedContainers', outs('flow_bps'), 360/3600);
+makeOuts(p,'manifest','ShippingManifestMsg', {'destinationId','0';'batchId','0';'count','0';'mass_kg','0'});
+stubStatus(p,'statusDispatch', '15', '1');
+
+p = beh(mdlA, [mdl '/CentralControlComputer']);
+for s = 1:4, inEl(p, sprintf('statusCook%d',s), 'health'); end
+pwDyn = {};
+for s = 1:4, pwDyn{end+1} = addInEl(p, sprintf('statusCook%d',s), 'power_kW', sprintf('Cook%dPwr',s)); end %#ok<AGROW>
+hcPwrPorts = {'statusTransport','statusQA','statusFleet','statusAmbStore','statusPower', ...
+              'statusReceive','statusColdStore','statusRefuel','statusPrep1','statusPrep2', ...
+              'statusPack','statusDispatch'};
+pw = {};
+for q = hcPwrPorts, pw{end+1} = addInEl(p, q{1}, 'power_kW', [q{1} 'Pwr']); end %#ok<AGROW>
+mx = addB(p,'HealthMux','simulink/Signal Routing/Mux',{'Inputs','4'});
+for s = 1:4, lineTo(p, sprintf('in_statusCook%d/1',s), sprintf('%s/%d',mx,s)); end
+dyn = addB(p,'DynPower','simulink/Math Operations/Add',{'Inputs','++++'});
+for s = 1:4, lineTo(p, [pwDyn{s} '/1'], sprintf('%s/%d',dyn,s)); end
+sup = addRef(p,'Supervisor','BehSupervisor', {'NumLines','HC_NumLines'});
+line(p, mx, sup); lineTo(p, [dyn '/1'], [sup '/2']);
+tot = addB(p,'TotalPower','simulink/Math Operations/Add', {'Inputs', repmat('+',1,numel(pw)+2)});
+lineTo(p, [dyn '/1'], [tot '/1']);
+for q = 1:numel(pw), lineTo(p, [pw{q} '/1'], sprintf('%s/%d', tot, q+1)); end
+oth = addB(p,'UnreportedPower','simulink/Sources/Constant',{'Value','58'});
+lineTo(p, [oth '/1'], sprintf('%s/%d', tot, numel(pw)+2));
+touts = makeOuts(p,'telemetry','TelemetryBus', {});
+lineTo(p, [tot '/1'], touts('totalPower_kW'));
+mdtc = addB(p,'ModeDbl','simulink/Signal Attributes/Data Type Conversion',{'OutDataTypeStr','double'});
+lineTo(p, [sup '/2'], [mdtc '/1']); lineTo(p, [mdtc '/1'], touts('plantMode'));
+term(p, [sup '/1']);
+makeOuts(p,'productionDirective','ControlBus', {'cmdType','0';'targetId','0';'setpoint','1'});
+telemetryRoot(mdlA, [mdl '/CentralControlComputer'], 'telemetry');
+
+stubOnly(mdlA, [mdl '/FusionPowerPlant'], {'statusPower','0'});
+stubOnly(mdlA, [mdl '/RefuelingStation'], {'statusRefuel','20'});
+stubOnly(mdlA, [mdl '/ConveyorNetwork'], {'statusTransport','25'});
+p = beh(mdlA, [mdl '/GravityCompensatorArray']);
+makeOuts(p,'envStatus','GravityData', {'gravity_g','1';'compensation_pct','100'});
+p = beh(mdlA, [mdl '/InventorySensorGrid']);
+makeOuts(p,'inventoryStatus','StockData', {'itemId','1';'qty_units','800';'error_pct','0'});
+makeOuts(p,'reorderRequest','StockData', {'itemId','1';'qty_units','0';'error_pct','0'});
+
+save(mdlA);
+fprintf('%s: inline behaviors built\n', mdl);
+end
+
+% ======================================================================
+function buildEverSimmer()
+mdl = 'PhysicalEverSimmer';
+mdlA = systemcomposer.loadModel(mdl);
+set_param(mdl, 'SolverType','Variable-step', 'StopTime','14400');
+mws = get_param(mdl,'ModelWorkspace');
+for v = {'Fault_T_Cell1','Fault_T_Cell2','Fault_T_Cell3'}
+    assignin(mws, v{1}, 1e9);
+end
+
+p = beh(mdlA, [mdl '/TriplePadPort']);
+inEl(p,'loadedShipment','flow_bps');
+outs = makeOuts(p,'inboundCargo','IngredientPallet', {'palletId','0';'mass_kg','0';'temp_C','4'});
+rs = addB(p,'ResupplyRate','simulink/Sources/Constant',{'Value','ES_Resupply_bph/3600'});
+line(p, rs, outs('flow_bps'));
+outs = makeOuts(p,'outboundShipments','SealedContainerBatch', {'batchId','0';'count','0';'sealRating_days','365'});
+passThrough(p, 'in_loadedShipment', outs('flow_bps'), 280/3600);
+stubStatus(p,'statusFleet', '18', '1');
+
+p = beh(mdlA, [mdl '/AutoDock']);
+inEl(p,'inboundCargo','flow_bps');
+outs = makeOuts(p,'receivedIngredients','IngredientPallet', {'palletId','0';'mass_kg','0';'temp_C','4'});
+passThrough(p, 'in_inboundCargo', outs('flow_bps'), 300/3600);
+stubStatus(p,'statusReceive', '12', '1');
+
+p = beh(mdlA, [mdl '/DualZoneStore']);
+inEl(p,'receivedIngredients','flow_bps');
+inEl(p,'directive','setpoint');
+m = addRef(p,'Store','BehStorage', {'Capacity_bowls','ES_StorageCap_bowls'; ...
+    'InitLevel_bowls','ES_StorageInit_bowls'});
+line(p, 'in_receivedIngredients', m);
+d = addB(p,'DrawRate','simulink/Sources/Constant',{'Value','3*ES_PrepRate_bph/3600'});
+lineTo(p, [d '/1'], [m '/2']);
+outs = makeOuts(p,'stagedIngredients','IngredientPallet', {'palletId','0';'mass_kg','0';'temp_C','4'});
+lineTo(p, [m '/1'], outs('flow_bps'));
+makeOuts(p,'stockLevel','StockData', {'itemId','1';'qty_units','900';'error_pct','0'});
+stubStatus(p,'statusStore', '35', '1');
+term(p, [m '/2']); term(p, [m '/3']);
+
+for cellN = 1:3
+    cellPath = sprintf('%s/ProductionCell%d', mdl, cellN);
+    fvar = sprintf('Fault_T_Cell%d', cellN);
+
+    p = beh(mdlA, [cellPath '/CellPrepUnit']);
+    inEl(p,'stagedIngredients','flow_bps');
+    inEl(p,'directive','setpoint');
+    g = addB(p,'ThirdShare','simulink/Math Operations/Gain',{'Gain','1/3'});
+    line(p, 'in_stagedIngredients', g);
+    gate = faultGate(p, fvar);
+    en = enableOf(p, gate);
+    m = addRef(p,'Prep','BehPrepUnit', {'PrepRate_bph','ES_PrepRate_bph'});
+    line(p, g, [m '/1']); lineTo(p, [en '/1'], [m '/2']);
+    outs = makeOuts(p,'preppedBatch','PreparedBatch', {'batchId','0';'recipeId','0'});
+    lineTo(p, [m '/1'], outs('flow_bps'));
+    kg = addB(p,'ToKgPerHr','simulink/Math Operations/Gain',{'Gain','0.55*3600'});
+    lineTo(p, [m '/1'], [kg '/1']); lineTo(p, [kg '/1'], outs('mass_kg'));
+    stubStatus(p,'statusPrep', '15', gate);
+    term(p, [m '/2']);
+
+    p = beh(mdlA, [cellPath '/CellCookVat']);
+    inEl(p,'preppedBatch','flow_bps');
+    inEl(p,'directive','setpoint');
+    gate = faultGate(p, fvar);
+    en = enableOf(p, gate);
+    m = addRef(p,'Vat','BehCookVat', {'BatchSize_bowls','ES_BatchSize_bowls'; ...
+        'HeaterPower_kW','ES_HeaterPower_kW'; 'VatThermalMass_JpK','ES_VatThermalMass_JpK'; ...
+        'FillRate_bps','ES_FillRate_bps'; 'SimmerTime_s','ES_SimmerTime_s'; ...
+        'DrainTime_s','ES_DrainTime_s'; 'CleanTime_s','ES_CleanTime_s'});
+    line(p, 'in_preppedBatch', m); lineTo(p, [en '/1'], [m '/2']);
+    outs = makeOuts(p,'cookedSoup','SoupStream', {'batchId','0';'contamination_ppm','0'});
+    lineTo(p, [m '/1'], outs('flow_bps'));
+    lit = addB(p,'ToLitres','simulink/Math Operations/Gain',{'Gain','1800'});
+    lineTo(p, [m '/1'], [lit '/1']); lineTo(p, [lit '/1'], outs('volume_L'));
+    lineTo(p, [m '/3'], outs('temp_C'));
+    souts = makeOuts(p,'statusCook','StatusBus', {'unitId',num2str(cellN);'faultCode','0'});
+    dtc = addB(p,'StateDbl','simulink/Signal Attributes/Data Type Conversion',{'OutDataTypeStr','double'});
+    lineTo(p, [m '/4'], [dtc '/1']); lineTo(p, [dtc '/1'], souts('opState'));
+    lineTo(p, [m '/2'], souts('power_kW'));
+    lineTo(p, [gate '/1'], souts('health'));
+    term(p, [m '/5']);
+
+    p = beh(mdlA, [cellPath '/CellQCSensor']);
+    inEl(p,'cookedSoup','flow_bps');
+    inEl(p,'directive','setpoint');
+    sg = addRef(p,'Surge','BehStorage', {'Capacity_bowls','120'; 'InitLevel_bowls','0'});
+    line(p, 'in_cookedSoup', sg);
+    dr = addB(p,'QCDraw','simulink/Sources/Constant',{'Value','ES_QCRate_bph/3600'});
+    lineTo(p, [dr '/1'], [sg '/2']);
+    gate = faultGate(p, fvar);
+    en = enableOf(p, gate);
+    m = addRef(p,'QC','BehQCStation', {'QCRate_bph','ES_QCRate_bph'; 'RejectFrac','ES_QCReject'; ...
+        'CalibPeriod_s','ES_QCCalibPeriod_s'; 'CalibTime_s','ES_QCCalibTime_s'});
+    lineTo(p, [sg '/1'], [m '/1']); lineTo(p, [en '/1'], [m '/2']);
+    outs = makeOuts(p,'approvedSoup','SoupStream', {'batchId','0';'temp_C','90';'contamination_ppm','0'});
+    lineTo(p, [m '/1'], outs('flow_bps'));
+    lit = addB(p,'ToLitres','simulink/Math Operations/Gain',{'Gain','1800'});
+    lineTo(p, [m '/1'], [lit '/1']); lineTo(p, [lit '/1'], outs('volume_L'));
+    stubStatus(p,'statusQA', '4', gate);
+    term(p, [m '/2']); term(p, [m '/3']); term(p, [sg '/2']); term(p, [sg '/3']);
+
+    p = beh(mdlA, [cellPath '/CellPackager']);
+    inEl(p,'approvedSoup','flow_bps');
+    inEl(p,'directive','setpoint');
+    sg = addRef(p,'Surge','BehStorage', {'Capacity_bowls','60'; 'InitLevel_bowls','0'});
+    line(p, 'in_approvedSoup', sg);
+    dr = addB(p,'PackDraw','simulink/Sources/Constant',{'Value','ES_PackRate_bph/3600'});
+    lineTo(p, [dr '/1'], [sg '/2']);
+    gate = faultGate(p, fvar);
+    en = enableOf(p, gate);
+    m = addRef(p,'Pack','BehPackager', {'PackRate_bph','ES_PackRate_bph'});
+    lineTo(p, [sg '/1'], [m '/1']); lineTo(p, [en '/1'], [m '/2']);
+    outs = makeOuts(p,'sealedContainers','SealedContainerBatch', {'batchId','0';'count','0';'sealRating_days','365'});
+    lineTo(p, [m '/1'], outs('flow_bps'));
+    stubStatus(p,'statusPack', '12', gate);
+    term(p, [sg '/2']); term(p, [sg '/3']);
+
+    % CellController: min health + power sum -> statusCell; directive fan
+    p = beh(mdlA, [cellPath '/CellController']);
+    hs = {};
+    ps_ = {};
+    for q = {'statusPrep','statusCook','statusQA','statusPack'}
+        inEl(p, q{1}, 'health');
+        hs{end+1} = ['in_' q{1}]; %#ok<AGROW>
+        ps_{end+1} = addInEl(p, q{1}, 'power_kW', [q{1} 'Pwr']); %#ok<AGROW>
+    end
+    mn = addB(p,'HealthMin','simulink/Math Operations/MinMax',{'Function','min';'Inputs','4'});
+    for q = 1:4, lineTo(p, [hs{q} '/1'], sprintf('%s/%d',mn,q)); end
+    sm = addB(p,'PowerSum','simulink/Math Operations/Add',{'Inputs','+++++'});
+    for q = 1:4, lineTo(p, [ps_{q} '/1'], sprintf('%s/%d',sm,q)); end
+    oc = addB(p,'OwnPower','simulink/Sources/Constant',{'Value','2'});
+    lineTo(p, [oc '/1'], sprintf('%s/5',sm));
+    souts = makeOuts(p,'statusCell','StatusBus', {'unitId',num2str(cellN);'opState','1';'faultCode','0'});
+    lineTo(p, [sm '/1'], souts('power_kW'));
+    lineTo(p, [mn '/1'], souts('health'));
+    makeOuts(p,'cellDirective','ControlBus', {'cmdType','0';'targetId','0';'setpoint','1'});
+end
+
+p = beh(mdlA, [mdl '/AutoCargoLoader']);
+for s = 1:3, inEl(p, sprintf('containersCell%d',s), 'flow_bps'); end
+sm = addB(p,'ContainerSum','simulink/Math Operations/Add',{'Inputs','+++'});
+for s = 1:3, lineTo(p, sprintf('in_containersCell%d/1',s), sprintf('%s/%d',sm,s)); end
+outs = makeOuts(p,'loadedShipment','SealedContainerBatch', {'batchId','0';'count','0';'sealRating_days','365'});
+passThrough(p, sm, outs('flow_bps'), 280/3600);
+makeOuts(p,'manifest','ShippingManifestMsg', {'destinationId','0';'batchId','0';'count','0';'mass_kg','0'});
+stubStatus(p,'statusDispatch', '12', '1');
+
+p = beh(mdlA, [mdl '/ControlTriad']);
+for s = 1:3, inEl(p, sprintf('statusCell%d',s), 'health'); end
+pwDyn = {};
+for s = 1:3, pwDyn{end+1} = addInEl(p, sprintf('statusCell%d',s), 'power_kW', sprintf('Cell%dPwr',s)); end %#ok<AGROW>
+esPwrPorts = {'statusPower','statusFleet','statusStore','statusDispatch', ...
+              'statusReceive','statusRefuel','statusTransport'};
+pw = {};
+for q = esPwrPorts, pw{end+1} = addInEl(p, q{1}, 'power_kW', [q{1} 'Pwr']); end %#ok<AGROW>
+mx = addB(p,'HealthMux','simulink/Signal Routing/Mux',{'Inputs','4'});
+for s = 1:3, lineTo(p, sprintf('in_statusCell%d/1',s), sprintf('%s/%d',mx,s)); end
+one = addB(p,'One','simulink/Sources/Constant',{'Value','1'});
+lineTo(p, [one '/1'], [mx '/4']);
+dyn = addB(p,'DynPower','simulink/Math Operations/Add',{'Inputs','+++'});
+for s = 1:3, lineTo(p, [pwDyn{s} '/1'], sprintf('%s/%d',dyn,s)); end
+sup = addRef(p,'Supervisor','BehSupervisor', {'NumLines','ES_NumLines'});
+line(p, mx, sup); lineTo(p, [dyn '/1'], [sup '/2']);
+tot = addB(p,'TotalPower','simulink/Math Operations/Add', {'Inputs', repmat('+',1,numel(pw)+2)});
+lineTo(p, [dyn '/1'], [tot '/1']);
+for q = 1:numel(pw), lineTo(p, [pw{q} '/1'], sprintf('%s/%d', tot, q+1)); end
+oth = addB(p,'UnreportedPower','simulink/Sources/Constant',{'Value','66'});
+lineTo(p, [oth '/1'], sprintf('%s/%d', tot, numel(pw)+2));
+touts = makeOuts(p,'telemetry','TelemetryBus', {});
+lineTo(p, [tot '/1'], touts('totalPower_kW'));
+mdtc = addB(p,'ModeDbl','simulink/Signal Attributes/Data Type Conversion',{'OutDataTypeStr','double'});
+lineTo(p, [sup '/2'], [mdtc '/1']); lineTo(p, [mdtc '/1'], touts('plantMode'));
+term(p, [sup '/1']);
+makeOuts(p,'productionDirective','ControlBus', {'cmdType','0';'targetId','0';'setpoint','1'});
+telemetryRoot(mdlA, [mdl '/ControlTriad'], 'telemetry');
+
+stubOnly(mdlA, [mdl '/RedundantReactorPair'], {'statusPower','0'});
+stubOnly(mdlA, [mdl '/AutoRefuelCell'], {'statusRefuel','10'});
+stubOnly(mdlA, [mdl '/RoboTransportSwarm'], {'statusTransport','15'});
+p = beh(mdlA, [mdl '/GravityCompMesh']);
+makeOuts(p,'envStatus','GravityData', {'gravity_g','1';'compensation_pct','100'});
+p = beh(mdlA, [mdl '/SmartInventoryNet']);
+makeOuts(p,'inventoryStatus','StockData', {'itemId','1';'qty_units','900';'error_pct','0'});
+makeOuts(p,'reorderRequest','StockData', {'itemId','1';'qty_units','0';'error_pct','0'});
+
+save(mdlA);
+fprintf('%s: inline behaviors built\n', mdl);
 end
 
 % ======================= helpers =======================
@@ -426,6 +780,15 @@ comp = lookup(mdlA, 'Path', compPath);
 cp = [];
 for q = comp.Ports
     if strcmp(q.Name, portName), cp = q; break; end
+end
+if isempty(cp)
+    % new Simulink port blocks surface on the SC component only after a
+    % save refreshes the architecture view
+    save(mdlA);
+    comp = lookup(mdlA, 'Path', compPath);
+    for q = comp.Ports
+        if strcmp(q.Name, portName), cp = q; break; end
+    end
 end
 assert(~isempty(cp), 'port %s not yet visible on %s (save/reload the model first)', portName, compPath);
 % no explicit interface: the element-writer blocks type the port, and a

@@ -28,17 +28,23 @@ The agent imported both spreadsheets into Requirements Toolbox sets and created 
 
 First, a quick word on what a trade study actually is, for readers who don't do this daily. When more than one design could plausibly meet the requirements, you develop several genuinely different candidates far enough to measure them, evaluate all of them against the same criteria, and choose one for reasons you can defend with numbers. The alternative, which every engineer has lived through, is that the first design to reach a whiteboard quietly becomes the design, and every later question about it gets answered by the people who are already invested in it. A trade study is how you buy your objectivity before you've spent it.
 
-The key ingredient is alternatives that are actually different, not one design with three coats of paint. I asked the agent to propose variants that each optimize a different corner of the requirement space, and after some back and forth we landed on three:
+The key ingredient is alternatives that are actually different, not one design with three coats of paint. I asked the agent to propose variants that each optimize a different corner of the requirement space, and after some back and forth we landed on three. Before the full architecture diagrams, here's the shape of each concept in one picture.
 
 **HyperCook** chases throughput. Four parallel continuous cook lines, two robotic prep lines, a four-pad launch complex, a fusion power plant. It produces 320 bowls per hour, 60% above the requirement.
+
+![HyperCook at a glance: parallel everywhere until the flow funnels through single-string QC and packaging](images/variant_schematic_hypercook.png)
 
 ![The HyperCook variant](images/PhysicalHyperCook.png)
 
 **LeanBroth** chases budget margin. Two batch kettles, one semi-automated prep station, shared cranes, a compact fission reactor, and more humans in the loop. It meets every requirement while using roughly half of every budget.
 
+![LeanBroth at a glance: modest parallelism with a single-string prep station as the weak link](images/variant_schematic_leanbroth.png)
+
 ![The LeanBroth variant](images/PhysicalLeanBroth.png)
 
 **EverSimmer** chases resilience. Three fully independent production cells, each containing its own prep, cook, QC, and packaging units plus a local cell controller. A distributed control triad, redundant reactors, autonomous robotic transport. Lose any single cell and you still make soup.
+
+![EverSimmer at a glance: three independent cells, no single string anywhere](images/variant_schematic_eversimmer.png)
 
 ![The EverSimmer variant](images/PhysicalEverSimmer.png)
 
@@ -46,7 +52,7 @@ The production cell is my favorite part of this architecture. It's a composite c
 
 ![Inside an EverSimmer production cell](images/EverSimmer_ProductionCell.png)
 
-**A design decision worth pausing on:** we modeled the variants as three separate architecture models rather than using System Composer variant components inside a single model. Variant components are great when alternatives differ at a component or two. Here the variants differ in topology, hierarchy depth, and even component count, and each one needs its own allocation set from the logical layer and its own roll-up analysis. Three models with a shared interface dictionary and a shared stereotype profile turned out to be much cleaner. That decision went into an ADR-style decision log in the repo (nineteen entries by the end of this post), which I've found is the single most useful artifact for picking the work back up weeks later.
+**A design decision worth pausing on:** we modeled the variants as three separate architecture models rather than using System Composer variant components inside a single model. Variant components are great when alternatives differ at a component or two. Here the variants differ in topology, hierarchy depth, and even component count, and each one needs its own allocation set from the logical layer and its own roll-up analysis. Three models with a shared interface dictionary and a shared stereotype profile turned out to be much cleaner. That decision went into an ADR-style decision log in the repo (twenty entries by the end of this post), which I've found is the single most useful artifact for picking the work back up weeks later.
 
 ## Making the variants measurable
 
@@ -92,9 +98,11 @@ That was where the study stood: three compliant variants, one robust winner, eve
 
 Everything so far treats the factory as a spreadsheet. Every throughput number is a rated capacity, every flow is lossless, and nothing ever heats up, recalibrates, or breaks at an inconvenient time. So the next ask was: build behavioral models for all three variants, in Simulink, Stateflow, and Simscape as appropriate, and rerun the trade with simulated numbers instead of rated ones.
 
-The componentization is the part I'd reuse on a real program. Instead of three monolithic simulations, the agent built a shared library of referenced models, one per production role: storage, prep, continuous cooking, batch cooking, quality control, packaging, and supervision. The architecture components told us where to draw the boundaries. Each component model declares its rates and capacities as model arguments, each variant gets a data dictionary that binds those arguments per instance, and the three plant models are just different compositions of the same library. EverSimmer's plant is literally three instances of one BehProductionCell model, which itself composes prep, vat, QC, and packaging references, mirroring the architecture's cell hierarchy exactly.
+The componentization is the part I'd reuse on a real program. Instead of three monolithic simulations, the agent built a shared library of referenced models, one per production role: storage, prep, continuous cooking, batch cooking, quality control, packaging, and supervision. The architecture components told us where to draw the boundaries. Each component model declares its rates and capacities as model arguments, and each variant gets a data dictionary that binds those arguments per instance.
 
-Because every component is an independent referenced model, every component is independently testable. A sub-agent wrote 21 unit tests against the component interfaces while the main session kept building, and the suite caught a real bug in the supervisor's vector dimensions before any plant model existed.
+Here's the part that changed my mind about where the simulation should live. My first instinct, and the agent's, was to compose the library into three separate plant models, one per variant, and treat those as the executable artifacts. Then it became obvious that this was duplicating work the architecture models had already done: the connectors between components already describe exactly which units feed which, in what multiplicity, for each variant. So instead the agent converted every relevant component, production units, controllers, even the support equipment, into an inline subsystem behavior sitting right inside the System Composer model, wired to that component's existing ports. The architecture is the simulation now. EverSimmer's three production cells are the architecture's own connectors driving three instances of one BehProductionCell model, and each plant's own controller computes total power and reports plant mode straight from the status buses it was already receiving for the roll-up, feeding a small new telemetry port at the root of each model. Throughput itself is read off the same root outbound-shipments port the roll-up already used. No separate telemetry step, no second model to keep in sync.
+
+Because every component is an independent referenced model, every component is independently testable. A sub-agent wrote 21 unit tests against the component interfaces while the main session kept building, and the suite caught a real bug in the supervisor's vector dimensions before a single architecture model carried any inline behavior at all.
 
 My favorite component is the batch cook vat. A Stateflow chart sequences the batch cycle (Idle, Fill, Heat, Simmer, Drain, Clean) and drives a small Simscape thermal network: a heater, a lumped thermal mass, convective losses to the habitat. Nobody types in a throughput number. The vat's throughput *emerges* from batch size divided by a cycle time that the physics produces.
 
@@ -102,23 +110,23 @@ My favorite component is the batch cook vat. A Stateflow chart sequences the bat
 
 ![The batch cycle inside the sequencer chart](images/beh_vat_sequencer.png)
 
-Simulating the plants immediately produced behavior the static roll-up could never show. Continuous HyperCook ships its first bowl 149 seconds after cold start; the batch variants take about an hour, because a first batch has to fill, heat, and simmer before anything reaches packaging. And an early integration run taught us some real process engineering: a 40-bowl batch drained into a rate-limited QC station loses most of the batch, because a flow limit silently discards whatever exceeds it. Real plants put surge tanks between batch and continuous stages, and now so do we, built from the same storage component the library already had.
+Running the architecture models immediately produced behavior the static roll-up could never show. Continuous HyperCook ships its first bowl 119 seconds after cold start; the batch variants take about 57 minutes, because a first batch has to fill, heat, and simmer before anything reaches packaging. And an early integration run taught us some real process engineering: a 40-bowl batch drained into a rate-limited QC station loses most of the batch, because a flow limit silently discards whatever exceeds it. Real plants put surge tanks between batch and continuous stages, and now so do we, built from the same storage component the library already had.
 
 ![Simulated cold start and steady state for all three variants](images/behavioral_throughput.png)
 
 ## The trade study, rerun
 
-Here's the twist. With yield loss and downtime in the model, LeanBroth produces 196.6 bowls per hour against a floor of 200. It fails the throughput requirement. Formally: the compliance gate (each budget requirement is an executable Requirements Table row, which is its own post) flags exactly the throughput check and nothing else.
+Here's the twist. With yield loss and downtime in the model, LeanBroth produces 196.8 bowls per hour against a floor of 200. It fails the throughput requirement. Formally: the compliance gate (each budget requirement is an executable Requirements Table row, which is its own post) flags exactly the throughput check and nothing else.
 
 Where did the margin go? LeanBroth's static 210 looked like a comfortable 5% cushion. But its manual QC bench rejects 3% of product and goes offline for recalibration about 4% of the time, and those two honest little numbers consumed the entire cushion. The margin was never real. It was an artifact of assuming lossless flow, and it took a behavior model about eight simulated hours to say so.
 
-The fault injection runs told the resilience story properly too. At two hours in, each variant loses its worst-case single component. HyperCook and LeanBroth collapse to zero, because a single-string conveyor or prep station takes the whole plant with it. EverSimmer's supervisor drops the failed cell, reports a Degraded mode, and settles at 67% capacity. We had claimed that number in a spreadsheet for months. Now there's a time history of it happening.
+The fault injection runs told the resilience story properly too, and corrected one of our own assumptions along the way. At two hours in, each variant loses its worst-case single component. HyperCook and LeanBroth both collapse to zero, but not for the reason we expected going in: HyperCook's single string turns out to be its QC scanner and packaging line, not the conveyor, since the architecture never put a conveyor on the material path in the first place. LeanBroth's single string is its one prep station, as assumed. EverSimmer's supervisor drops the failed cell, reports a Degraded mode, and settles at 67% capacity. We had claimed that number in a spreadsheet for months. Now there's a time history of it happening.
 
 ![Worst-case single-fault response: two variants collapse, one degrades](images/behavioral_fault.png)
 
 Per the gate rule we'd already established (a non-compliant variant has no business being scored), LeanBroth is excluded, and the rerun becomes a two-horse race: EverSimmer takes all four weighting scenarios and 98.4% of the Monte Carlo draws. The recommendation didn't change, but it changed character. It used to rest on asserted numbers; now the decisive criteria are simulated.
 
-Two honest caveats. First, the reject fractions and calibration schedules are my engineering estimates, not requirements; a better QC bench (roughly 1.3% reject or less) puts LeanBroth back over the floor, so the real output of this exercise is a redesign study, not an execution. Second, the behavioral layer also produced new discriminators the static study never had, like energy per bowl, where LeanBroth is best (0.82 kWh) and HyperCook worst (1.56 kWh). More fidelity doesn't just check old numbers. It generates new arguments.
+Two honest caveats. First, the reject fractions and calibration schedules are my engineering estimates, not requirements; a better QC bench (roughly 1.3% reject or less) puts LeanBroth back over the floor, so the real output of this exercise is a redesign study, not an execution. Second, the behavioral layer also produced new discriminators the static study never had, like energy per bowl, where LeanBroth is best (0.81 kWh) and HyperCook worst (1.55 kWh). More fidelity doesn't just check old numbers. It generates new arguments.
 
 ## What I learned about working with the agent
 
@@ -132,9 +140,9 @@ The workflow from the first post held up: propose, approve, generate, run, confi
 
 **Write down the API gotchas.** The agent hit a few sharp edges in scripted System Composer work, found workarounds, and recorded them in its own memory for next session. My favorite: one connect signature silently does nothing while another works perfectly. An agent that hits a wall, documents it, and doesn't hit it again next week is worth a lot.
 
-**Unit test the model library like software.** Referenced models with declared arguments are testable units, and treating them that way paid for itself the same afternoon. The tests also flushed out two simulation API traps (a variable override that silently doesn't reach a model workspace, and external inputs that interpolate when you meant them to step) that would otherwise have surfaced as mysterious plant-level behavior.
+**Unit test the model library like software.** Referenced models with declared arguments are testable units, and treating them that way paid for itself the same afternoon. The tests also flushed out two simulation API traps (a variable override that silently doesn't reach a model workspace, and external inputs that interpolate when you meant them to step) that would otherwise have surfaced as mysterious plant-level behavior, and both traps stayed fixed once the reusable library moved into the architecture models.
 
-**Keep an independent check on your roll-up.** While linking behaviors into the architecture, we found that linking a component to a Simulink model quietly drops that component's stereotype property values from the roll-up analysis. The only reason we caught it is that the compliance gate flipped a second requirement for reasons that made no sense. Cross-checks that exist to catch the agent's mistakes catch the tool's surprises too.
+**Keep an independent check on your roll-up.** Our first attempt at connecting behavior to architecture composed the library into standalone plant models and, separately, tried linking a component straight to a Simulink model. That link quietly dropped the component's stereotype property values from the roll-up analysis. The only reason we caught it is that the compliance gate flipped a second requirement for reasons that made no sense. We eventually replaced both attempts with an inline mechanism that converts each component into a subsystem behavior in place, keeping its architecture ports, connectors, and stereotype values intact, which is what the numbers above actually run on now. Cross-checks that exist to catch the agent's mistakes catch the tool's surprises too, and sometimes they point you at a better design, not just a bug.
 
 ## So what's the point?
 
@@ -146,6 +154,6 @@ The engineering judgment didn't go anywhere. I chose the three optimization corn
 
 ## Now it's your turn
 
-The full project (architecture models, behavioral component library and plant models, requirements, allocation sets, analysis scripts, unit tests, figures, and all nineteen ADRs) is in the repo linked below, along with the skills from the first post. Clone it, open the MATLAB Project, run runFullAnalysis to reproduce the whole chain from behavioral simulation through the compliance gate to the Monte Carlo sweep, and check my math. Then tell your agent you want to add a fourth variant and see what it proposes.
+The full project (architecture models with their inline behavior, the reusable behavioral component library, requirements, allocation sets, analysis scripts, unit tests, figures, and all twenty ADRs) is in the repo linked below, along with the skills from the first post. Clone it, open the MATLAB Project, run runFullAnalysis to reproduce the whole chain from behavioral simulation through the compliance gate to the Monte Carlo sweep, and check my math. Then tell your agent you want to add a fourth variant and see what it proposes.
 
 Have you tried running an architecture trade study with an AI agent in the loop? Where did it help, and where did you have to take the wheel? Let us know in the comments.

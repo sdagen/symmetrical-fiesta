@@ -19,7 +19,7 @@ dataDir = fullfile(root, 'behavior', 'data');
 
 % --- Project path: every folder whose artifacts resolve by filename ---
 folders = {'behavior/components','behavior/subsystems','behavior/data', ...
-           'behavior/plants','behavior/build','behavior/tests'};
+           'behavior/build','behavior/tests'};   % plants retired (ADR-020)
 projPathFolders = {proj.ProjectPath.File};
 for i = 1:numel(folders)
     f = fullfile(root, folders{i});
