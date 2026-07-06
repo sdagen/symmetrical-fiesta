@@ -4,7 +4,7 @@
 
 ---
 
-In [my previous post](https://blogs.mathworks.com/simulink/2026/04/26/model-based-systems-engineering-and-agentic-ai), I used an agentic AI workflow to do some initial system design for an intergalactic vegan soup factory. That first pass produced a single architecture, and I ended the post with a question I couldn't shake: getting *an* architecture out of an agent is nice, but real systems engineering is about choosing between *alternatives*. Could the same approach handle an actual architecture trade study?
+In [my previous post](https://blogs.mathworks.com/simulink/2026/04/26/model-based-systems-engineering-and-agentic-ai), I used an agentic AI workflow to do some initial system design for an intergalactic vegan soup factory. That first pass produced a single design by following an RFLP methodology. Getting *an* architecture out of an agent is nice, but real systems engineering is about choosing between *alternatives*. So, today I am revisiting the soup factory problem and using agentic AI to run an architectural trade study. 
 
 So I went back to the soup factory. This time the goal was a full RFLP (Requirements, Functional, Logical, Physical) decomposition in System Composer, three deliberately different physical architecture variants, quantitative metrics for all of them, and a defensible recommendation at the end. Everything lives in one MATLAB Project, everything traces back to the requirements, and every number in the final report is reproducible by running one function.
 
@@ -26,7 +26,9 @@ The agent imported both spreadsheets into Requirements Toolbox sets and created 
 
 ## Three ways to build a soup factory
 
-A trade study needs alternatives that are actually different, not one design with three coats of paint. I asked the agent to propose variants that each optimize a different corner of the requirement space, and after some back and forth we landed on three:
+First, a quick word on what a trade study actually is, for readers who don't do this daily. When more than one design could plausibly meet the requirements, you develop several genuinely different candidates far enough to measure them, evaluate all of them against the same criteria, and choose one for reasons you can defend with numbers. The alternative, which every engineer has lived through, is that the first design to reach a whiteboard quietly becomes the design, and every later question about it gets answered by the people who are already invested in it. A trade study is how you buy your objectivity before you've spent it.
+
+The key ingredient is alternatives that are actually different, not one design with three coats of paint. I asked the agent to propose variants that each optimize a different corner of the requirement space, and after some back and forth we landed on three:
 
 **HyperCook** chases throughput. Four parallel continuous cook lines, two robotic prep lines, a four-pad launch complex, a fusion power plant. It produces 320 bowls per hour, 60% above the requirement.
 
@@ -66,7 +68,9 @@ All three variants pass all eight requirement gates. That surprised me at first,
 
 HyperCook passes power at 99.6% of budget and volume at 99.3%. One requirements change and it's non-compliant. LeanBroth has enormous budget headroom but passes the automation requirement at exactly 0.80 against a floor of 0.80. Zero margin, just from the other direction. EverSimmer sits in the comfortable middle on everything except cost, where its margin is only 4.7%.
 
-For the actual scoring we used a weighted-sum MCDA over seven criteria (throughput margin, resource margin, cost margin, automation, crew margin, availability, and N-1 capacity retention), min-max normalized across the three variants:
+For the actual scoring we used MCDA (multi-criteria decision analysis), which sounds fancier than it is. If you have ever built a weighted decision matrix to pick a motor or a microcontroller, you already know the moves: score every option on every criterion, put the scores on a common scale so bowls per hour and credits can share a table, decide how much each criterion matters, and take the weighted sum. The value isn't in the arithmetic, it's in being forced to state your criteria and weights out loud, because those are the two places where opinion sneaks into an otherwise numeric process. Everything after this paragraph is about keeping those two doors honest.
+
+Here we scored seven criteria (throughput margin, resource margin, cost margin, automation, crew margin, availability, and N-1 capacity retention), each normalized min-max across the three variants so the best variant on a criterion scores 1 and the worst scores 0:
 
 ![Normalized criterion scores](images/criteria_scores.png)
 
