@@ -52,7 +52,7 @@ The production cell is my favorite part of this architecture. It's a composite c
 
 ![Inside an EverSimmer production cell](images/EverSimmer_ProductionCell.png)
 
-**A design decision worth pausing on:** we modeled the variants as three separate architecture models rather than using System Composer variant components inside a single model. Variant components are great when alternatives differ at a component or two. Here the variants differ in topology, hierarchy depth, and even component count, and each one needs its own allocation set from the logical layer and its own roll-up analysis. Three models with a shared interface dictionary and a shared stereotype profile turned out to be much cleaner. That decision went into an ADR-style decision log in the repo (twenty entries by the end of this post), which I've found is the single most useful artifact for picking the work back up weeks later.
+**A design decision worth pausing on:** we modeled the variants as three separate architecture models rather than using System Composer variant components inside a single model. Variant components are great when alternatives differ at a component or two. Here the variants differ in topology, hierarchy depth, and even component count, and each one needs its own allocation set from the logical layer and its own roll-up analysis. Three models with a shared interface dictionary and a shared stereotype profile turned out to be much cleaner. That decision went into an ADR-style decision log in the repo (twenty-one entries by the end of this post), which I've found is the single most useful artifact for picking the work back up weeks later.
 
 ## Making the variants measurable
 
@@ -128,6 +128,18 @@ Per the gate rule we'd already established (a non-compliant variant has no busin
 
 Two honest caveats. First, the reject fractions and calibration schedules are my engineering estimates, not requirements; a better QC bench (roughly 1.3% reject or less) puts LeanBroth back over the floor, so the real output of this exercise is a redesign study, not an execution. Second, the behavioral layer also produced new discriminators the static study never had, like energy per bowl, where LeanBroth is best (0.81 kWh) and HyperCook worst (1.55 kWh). More fidelity doesn't just check old numbers. It generates new arguments.
 
+## Testing the evidence, not just the models
+
+By this point the project had accumulated a lot of claims: golden roll-up totals, an expected gate verdict, a deterministic Monte Carlo result, 36 requirement links, retention percentages. Most of those claims lived as assertions buried inside the analysis scripts, which means they were checked by the same code that produced them. So the last exploration was organizing all of it as a proper test suite with MATLAB Test.
+
+The suite has 37 tests in four tiers, selected by tags. The component tier is the behavioral library's unit tests from earlier. The system tier simulates each architecture model end to end and checks the steady rate against a tolerance band, plus the worst-case fault response (0%, 0%, 67%, with EverSimmer's supervisor reporting Degraded). The analysis tier pins the claims themselves: the roll-up totals per variant, the exact 23-of-24 gate pattern, and the requirement that two runs of the seeded Monte Carlo produce bit-identical results. And a traceability tier verifies the artifacts that rot silently, checking that every requirement link still resolves to a live architecture element and every allocation set is complete. Suite membership is project metadata (files carry the project's Test label, and TestSuite.fromProject assembles everything), so there is no hard-coded list of test folders to forget about.
+
+The philosophy behind the pinned values: drift must be a conscious edit, never silence. And the suite earned its keep on its very first run. The golden-totals test failed on LeanBroth, because the "known" budget numbers I'd given the documentation agent had been recorded during that stereotype-dropping tooling incident, 1,400 kg and 190 kCr low, and the error had already leaked into a published explainer table. The test didn't catch the models being wrong. It caught *us* being wrong about the models, which in my experience is the more common failure mode.
+
+One limitation to report honestly: I wanted Verify links from the tests back to the requirements, so verification status would roll up in the Requirements Editor. In R2026a that linking is an interactive workflow only; there's no programmatic API for MATLAB test-to-requirement links yet. The traceability tests guard the link inventory in the meantime.
+
+The project now closes with a pleasant symmetry: runFullAnalysis regenerates every number in this post, and runAllTests proves them.
+
 ## What I learned about working with the agent
 
 The workflow from the first post held up: propose, approve, generate, run, confirm. A few implementation notes for anyone building something similar.
@@ -154,6 +166,6 @@ The engineering judgment didn't go anywhere. I chose the three optimization corn
 
 ## Now it's your turn
 
-The full project (architecture models with their inline behavior, the reusable behavioral component library, requirements, allocation sets, analysis scripts, unit tests, figures, and all twenty ADRs) is in the repo linked below, along with the skills from the first post. Clone it, open the MATLAB Project, run runFullAnalysis to reproduce the whole chain from behavioral simulation through the compliance gate to the Monte Carlo sweep, and check my math. Then tell your agent you want to add a fourth variant and see what it proposes.
+The full project (architecture models with their inline behavior, the reusable behavioral component library, requirements, allocation sets, analysis scripts, unit tests, figures, and all twenty-one ADRs) is in the repo linked below, along with the skills from the first post. Clone it, open the MATLAB Project, run runFullAnalysis to reproduce the whole chain from behavioral simulation through the compliance gate to the Monte Carlo sweep, run runAllTests to prove it, and check my math. Then tell your agent you want to add a fourth variant and see what it proposes.
 
 Have you tried running an architecture trade study with an AI agent in the loop? Where did it help, and where did you have to take the wheel? Let us know in the comments.
