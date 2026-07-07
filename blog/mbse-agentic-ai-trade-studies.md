@@ -80,6 +80,14 @@ The fault runs corrected an assumption of ours, too: HyperCook's single string t
 
 Honest caveats: the reject fractions and calibration schedules are my engineering estimates, and a better QC bench puts LeanBroth back over the floor, so the real output is a redesign study. And the behavioral layer produced new discriminators, like energy per bowl, where LeanBroth is best and HyperCook worst. More fidelity doesn't just check old numbers; it generates new arguments.
 
+## Putting error bars on the physics
+
+That "engineering estimates" caveat nagged at me, because the Monte Carlo sweep above only varies *opinions*: 5,000 random stakeholder weightings re-scoring the same fixed metrics, no simulation involved. LeanBroth's verdict was hanging on parameters I had guessed. So the next ask was a second Monte Carlo over the parameters themselves: 200 Latin hypercube draws of each variant's QC reject fraction and calibration schedule (right-skewed distributions, because rejects and maintenance overruns have long bad tails), with all three variants experiencing the same draw each time so the comparison stays fair. That's 600 actual simulations of the architecture models, dispatched through parsim in about 35 minutes, with the overrides injected per run so nothing on disk changes.
+
+![Throughput distributions from 600 simulations against the requirement floor](images/uncertainty_throughput.png)
+
+The result turns a point verdict into a probability: LeanBroth misses the 200 bowls-per-hour floor in 96% of parameter worlds, and even its 95th-percentile world reaches only 199.7. Saying "LeanBroth fails the throughput requirement with 96% confidence over the stated parameter uncertainty" is both a stronger and a fairer claim than "196.8 at nominal," because the remaining 4% quantifies exactly the better-QC-bench scenario the caveat could only gesture at. The other question was whether the winner was hiding in the error bars, so we scored every parameter draw under 25 random weightings each, with the compliance gate applied per draw: EverSimmer takes 97.8% of 5,000 worlds uncertain in both physics and priorities, barely moved from 98.4% under priorities alone. The verdict is robust to what we don't know, in both of the ways we don't know it.
+
 ## Testing the evidence, not just the models
 
 By now the project was full of claims (golden totals, an expected gate verdict, a deterministic Monte Carlo result) that lived as assertions inside the very scripts that produced them. So they became a test suite: 37 tests in four tiers, from component unit tests up through full architecture simulations, with the expected values recorded as regression baselines so that drift must be a conscious edit, never silence. The suite earned its keep on its first run, when the golden-totals test caught stale LeanBroth numbers that had already leaked into a documentation table. It didn't catch the models being wrong; it caught *us* being wrong about the models.
