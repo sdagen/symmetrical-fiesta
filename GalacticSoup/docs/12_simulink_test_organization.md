@@ -6,13 +6,13 @@ Artifacts: [`../tests/GalacticSoupSystemTests.mldatx`](../tests/GalacticSoupSyst
 
 ## 1. What moved, and why
 
-[`11_test_organization.md`](11_test_organization.md) organized the system tier — `tSystemNominal` and `tSystemFault` — as two more `matlab.unittest` classes alongside the analysis and traceability tiers, on the same footing as everything else in the suite. That placement was reasonable as far as it went: the tier simulates the three physical architecture models and pins throughput bands and fault-retention figures, and `matlab.unittest` is perfectly capable of calling `sim` and asserting on the result.
+[`11_test_organization.md`](11_test_organization.md) organized the system tier — `tSystemNominal` and `tSystemFault` — as two more `matlab.unittest` classes alongside the analysis and traceability tiers, on the same footing as everything else in the suite. That placement was reasonable as far as it went: the tier simulates the three physical architecture models and baselines throughput bands and fault-retention figures, and `matlab.unittest` is perfectly capable of calling `sim` and asserting on the result.
 
-But §5 of that document also recorded a limitation that mattered more than it looked at the time: `slreq.createLink` rejects a `matlab.unittest.Test` element outright, and nothing in the `matlabtest` namespace fills the gap. A MATLAB test can pin a number, but it cannot be linked to the requirement that number verifies — which meant `SR-GS-002` (throughput floor) and `SR-GS-026` (no single-fault production kill) had no path to a Requirements Editor verification status that traced back to an executed test, only to the static Requirements Table gate (ADR-010) checking the same numbers procedurally.
+But §5 of that document also recorded a limitation that mattered more than it looked at the time: `slreq.createLink` rejects a `matlab.unittest.Test` element outright, and nothing in the `matlabtest` namespace fills the gap. A MATLAB test can baseline a number, but it cannot be linked to the requirement that number verifies — which meant `SR-GS-002` (throughput floor) and `SR-GS-026` (no single-fault production kill) had no path to a Requirements Editor verification status that traced back to an executed test, only to the static Requirements Table gate (ADR-010) checking the same numbers procedurally.
 
 Simulink Test's test cases are a different kind of object — a `sltest.testmanager.TestCase`, not a `matlab.unittest.Test` — and `slreq.createLink` accepts them without complaint, producing a `Verify` link (domain `linktype_rmi_testmgr`) exactly where you'd expect one: a passing simulation test case *is* the verification of a requirement it targets. That capability, not any dissatisfaction with `matlab.unittest`'s simulation support, is the reason the system tier moved. The requirement-linkage story was the driver; retooling how the model gets simulated was incidental.
 
-`tSystemNominal.m` and `tSystemFault.m` are retired as redundant now that [`../tests/GalacticSoupSystemTests.mldatx`](../tests/GalacticSoupSystemTests.mldatx) covers the same six simulations with the same pinned figures, plus the links `matlab.unittest` could never carry.
+`tSystemNominal.m` and `tSystemFault.m` are retired as redundant now that [`../tests/GalacticSoupSystemTests.mldatx`](../tests/GalacticSoupSystemTests.mldatx) covers the same six simulations with the same baselined figures, plus the links `matlab.unittest` could never carry.
 
 ## 2. The `.mldatx` design
 
@@ -25,15 +25,15 @@ Two suites, six cases, all `simulation` test cases against the three physical ar
 | Case | Model | Regression band (bph) | Verify link |
 |---|---|---|---|
 | HyperCook nominal | `PhysicalHyperCook` | 308.4 ± 3 | SR-GS-002 |
-| LeanBroth nominal — regression pin | `PhysicalLeanBroth` | 196.8 ± 3 | *(none)* |
+| LeanBroth nominal — regression baseline | `PhysicalLeanBroth` | 196.8 ± 3 | *(none)* |
 | EverSimmer nominal | `PhysicalEverSimmer` | 231.9 ± 3 | SR-GS-002 |
 
 **WorstFault** — a `Fault_T_*` model-workspace variable overridden to 7,200 s via a parameter set, run out to 21,600 s:
 
 | Case | Model | Fault variable | Retention | Verify link |
 |---|---|---|---|---|
-| HyperCook worst fault — regression pin | `PhysicalHyperCook` | `Fault_T_QC` | 0 | *(none)* |
-| LeanBroth worst fault — regression pin | `PhysicalLeanBroth` | `Fault_T_Prep` | 0 | *(none)* |
+| HyperCook worst fault — regression baseline | `PhysicalHyperCook` | `Fault_T_QC` | 0 | *(none)* |
+| LeanBroth worst fault — regression baseline | `PhysicalLeanBroth` | `Fault_T_Prep` | 0 | *(none)* |
 | EverSimmer worst fault | `PhysicalEverSimmer` | `Fault_T_Cell1` | 0.672 | SR-GS-026 |
 
 Every case leans on a custom-criteria callback rather than the Test Manager's built-in signal checks, because the assertions are computed quantities (a trapezoidal steady-rate integral, a pre/post-fault retention ratio), not raw signal comparisons. The callback pulls `flow_bps` and `totalPower_kW`/`plantMode` out of `test.sltest_simout`'s logged `yout`, then asserts:
@@ -49,7 +49,7 @@ Two generator gotchas worth carrying forward as pattern, not just incident: ever
 
 Three `Verify` links exist in the built file: HyperCook nominal → SR-GS-002, EverSimmer nominal → SR-GS-002, EverSimmer worst fault → SR-GS-026. LeanBroth's two cases — nominal and worst-fault — are deliberately unlinked.
 
-The rule adopted: a `Verify` link attaches only where a passing test result means the requirement is genuinely met. LeanBroth's nominal case pins 196.8 bph, which is below the SR-GS-002 200 bph floor — the formal Requirements Table gate (ADR-010) already flags LeanBroth's Throughput row, and that failure is the correct, load-bearing finding, carried since [`10_behavioral_trade_update.md`](10_behavioral_trade_update.md) §3. Linking that case to SR-GS-002 as `Verify` would have the Requirements Editor report the requirement as satisfied by a test whose own logged number contradicts it — a fabricated verification, worse than no link at all. LeanBroth's cases stay in the suite as regression pins (the numbers are still worth protecting against silent drift) but carry no requirement traceability; that story belongs to the compliance gate, which is the artifact designed to say "this variant fails this requirement" without also being asked to claim the opposite.
+The rule adopted: a `Verify` link attaches only where a passing test result means the requirement is genuinely met. LeanBroth's nominal case baselines 196.8 bph, which is below the SR-GS-002 200 bph floor — the formal Requirements Table gate (ADR-010) already flags LeanBroth's Throughput row, and that failure is the correct, load-bearing finding, carried since [`10_behavioral_trade_update.md`](10_behavioral_trade_update.md) §3. Linking that case to SR-GS-002 as `Verify` would have the Requirements Editor report the requirement as satisfied by a test whose own logged number contradicts it — a fabricated verification, worse than no link at all. LeanBroth's cases stay in the suite as regression baselines (the numbers are still worth protecting against silent drift) but carry no requirement traceability; that story belongs to the compliance gate, which is the artifact designed to say "this variant fails this requirement" without also being asked to claim the opposite.
 
 The same reasoning is why HyperCook and LeanBroth's fault cases are unlinked to SR-GS-026 (no single-fault production kill): both collapse to zero output on their single-string failure mode, which is the expected, documented behavior for a non-`EverSimmer` variant (ADR-009, ADR-020) — not a requirement violation to verify against, and not a requirement satisfaction either. Only EverSimmer's case demonstrates the requirement being met, so only it carries the link.
 
@@ -104,7 +104,7 @@ Both tools stayed. Converting the remaining MATLAB tiers — 21 component tests 
 |---|---|---|
 | Pure-MATLAB analysis logic (roll-up totals, gate agreement, MCDA determinism) | **Wins.** No model in the loop; asserting on a MATLAB struct is direct and fast. | Would need a wrapper model with no purpose beyond hosting the assertion. |
 | Requirement-link integrity (traceability tier) | **Wins.** Same reasoning — the thing under test is link-graph structure, not simulated behavior. | Not applicable. |
-| Golden-value pinning ergonomics | **Wins.** A literal expected value and an `AbsTol` in a `verifyEqual` call, next to the code that produced the number. | Same idiom is available in a custom-criteria callback, but it's a string of MATLAB inside a callback property rather than a method body — more ceremony to read and edit. |
+| Golden-value baselining ergonomics | **Wins.** A literal expected value and an `AbsTol` in a `verifyEqual` call, next to the code that produced the number. | Same idiom is available in a custom-criteria callback, but it's a string of MATLAB inside a callback property rather than a method body — more ceremony to read and edit. |
 | Coverage tooling | **Wins.** `CodeCoveragePlugin` over `analysis/` and `behavior/build/` is a `matlab.unittest` plugin; there's no equivalent instrumentation of `.mldatx` custom-criteria code. | — |
 | Model simulation cases (steady-state throughput, fault injection) | Works — `tSystemNominal`/`tSystemFault` proved this in ADR-021 — but every case is bespoke `sim`/`SimulationInput` scripting. | **Wins.** `simulation` test cases, parameter sets, and `OverrideStopTime` are purpose-built for exactly this; the six cases here are declarative table rows, not scripted `sim` calls. |
 | Parameter-override fault injection | Possible via `SimulationInput.setVariable`, hand-rolled per test. | **Wins.** `addParameterOverride` on a named parameter set is the intended mechanism and reads as data, not code. |

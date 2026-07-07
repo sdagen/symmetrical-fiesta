@@ -1,7 +1,7 @@
 classdef (TestTags = {'analysis'}) tGateAgreement < sltest.TestCase
     % The formal Requirements Table gate and the expected verdicts.
     % runComplianceGate hard-asserts formal-vs-procedural agreement
-    % internally; this test pins the expected verdict pattern on top:
+    % internally; this test baselines the expected verdict pattern on top:
     % everything passes except LeanBroth throughput.
 
     methods (Test)

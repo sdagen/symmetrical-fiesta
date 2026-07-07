@@ -4,15 +4,15 @@ function buildSystemTestFile()
 %   simulation test cases on the three physical architecture models.
 %
 %   Nominal suite - steady throughput and plant mode via custom criteria:
-%     HC/ES cases verify the SR-GS-002 floor AND pin the regression band,
+%     HC/ES cases verify the SR-GS-002 floor AND record the regression baseline,
 %     and carry Verify links to SR-GS-002 so verification status rolls up
 %     in the Requirements Editor (the capability MATLAB Test lacks).
-%     The LB case is a regression pin only (196.8 bph band) - LeanBroth
+%     The LB case is a regression baseline only (196.8 bph band) - LeanBroth
 %     genuinely fails the floor, and that story belongs to the compliance
 %     gate, not to a Verify link that would assert the opposite.
 %   WorstFault suite - Fault_T_* parameter overrides at t = 7200 s:
 %     ES verifies SR-GS-026 (retention ~2/3, Degraded mode) with a Verify
-%     link; HC/LB pin their 0% collapse as unlinked regression cases.
+%     link; HC/LB baseline their 0% collapse as unlinked regression cases.
 %
 %   Destructive and idempotent: recreates the file and re-links, purging
 %   stale Verify links to this artifact from the requirement set first.
@@ -57,7 +57,7 @@ end
 % {name, model, steady bph, verifyFloor, linkReq}
 nom = { ...
  'HyperCook nominal',  'PhysicalHyperCook',  308.4, true,  'SR-GS-002'; ...
- 'LeanBroth nominal - regression pin', 'PhysicalLeanBroth', 196.8, false, ''; ...
+ 'LeanBroth nominal - regression baseline', 'PhysicalLeanBroth', 196.8, false, ''; ...
  'EverSimmer nominal', 'PhysicalEverSimmer', 231.9, true,  'SR-GS-002'};
 for i = 1:size(nom,1)
     tc = createTestCase(suites(1), 'simulation', nom{i,1});
@@ -88,8 +88,8 @@ end
 
 % {name, model, fault var, retention, endMode(if checked), linkReq}
 flt = { ...
- 'HyperCook worst fault - regression pin', 'PhysicalHyperCook', 'Fault_T_QC',    0,     [], ''; ...
- 'LeanBroth worst fault - regression pin', 'PhysicalLeanBroth', 'Fault_T_Prep',  0,     [], ''; ...
+ 'HyperCook worst fault - regression baseline', 'PhysicalHyperCook', 'Fault_T_QC',    0,     [], ''; ...
+ 'LeanBroth worst fault - regression baseline', 'PhysicalLeanBroth', 'Fault_T_Prep',  0,     [], ''; ...
  'EverSimmer worst fault',                 'PhysicalEverSimmer','Fault_T_Cell1', 0.672,  2, 'SR-GS-026'};
 for i = 1:size(flt,1)
     tc = createTestCase(faultSuite, 'simulation', flt{i,1});
