@@ -6,7 +6,7 @@
 
 In [my previous post](https://blogs.mathworks.com/simulink/2026/04/26/model-based-systems-engineering-and-agentic-ai), I used an agentic AI workflow to do some initial system design for an intergalactic vegan soup factory. That first pass produced a single design by following an RFLP methodology. Getting *an* architecture out of an agent is nice, but real systems engineering is about choosing between *alternatives*. So, today I am revisiting the soup factory problem and using agentic AI to run an architectural trade study. 
 
-So I went back to the soup factory. This time the goal was a full RFLP (Requirements, Functional, Logical, Physical) decomposition in System Composer, three deliberately different physical architecture variants, quantitative metrics for all of them, and a defensible recommendation at the end. Everything lives in one MATLAB Project, everything traces back to the requirements, and every number in the final report is reproducible by running one function.
+This time the goal was a full RFLP (Requirements, Functional, Logical, Physical) decomposition in System Composer, three deliberately different physical architecture variants, quantitative metrics for all of them, and a defensible recommendation at the end. Everything lives in one MATLAB Project, everything traces back to the requirements, and every number in the final report is reproducible by running one function.
 
 If you're skeptical about all of this, don't worry: you are still not alone. I've kept my honest reflections in here too, including the places where I had to overrule the agent.
 
@@ -30,7 +30,7 @@ First, a quick word on what a trade study actually is, for readers who don't do 
 
 The key ingredient is alternatives that are actually different, not one design with three coats of paint. I asked the agent to propose variants that each optimize a different corner of the requirement space, and after some back and forth we landed on three. Before the full architecture diagrams, here's the shape of each concept in one picture.
 
-**HyperCook** chases throughput. Four parallel continuous cook lines, two robotic prep lines, a four-pad launch complex, a fusion power plant. It produces 320 bowls per hour, 60% above the requirement.
+**HyperCook** chases throughput. Four parallel continuous cook lines, two robotic prep lines, a four-pad launch complex, a fusion power plant. It is rated at 320 bowls per hour, 60% above the requirement.
 
 ![HyperCook at a glance: parallel everywhere until the flow funnels through single-string QC and packaging](images/variant_schematic_hypercook.png)
 
@@ -90,7 +90,7 @@ But four hand-picked weight vectors are still four opinions. To guard against we
 
 ![Monte Carlo win share over 5,000 random weightings](images/mc_winshare.png)
 
-EverSimmer wins 84% of all possible stakeholder priorities. That's the number that turns "the committee picked EverSimmer" into "EverSimmer is robust to whatever the committee thinks." The recommendation shipped with honest caveats attached: the 4.7% cost margin needs a reserve or a descope plan, and EverSimmer's degraded mode after losing a cell (160 bowls per hour) satisfies the graceful degradation requirement but sits below the nominal 200, so it's a contingency mode, not a compliant steady state.
+EverSimmer wins 84% of all possible stakeholder priorities. That's the number that turns "the committee picked EverSimmer" into "EverSimmer is robust to whatever the committee thinks." The recommendation shipped with honest caveats attached: the 4.7% cost margin needs a reserve or a descope plan, and EverSimmer's degraded mode after losing a cell (160 bowls per hour on paper) satisfies the graceful degradation requirement but sits below the nominal 200, so it's a contingency mode, not a compliant steady state.
 
 That was where the study stood: three compliant variants, one robust winner, everything reproducible. Then I asked for more fidelity, and one of those three sentences stopped being true.
 
@@ -134,7 +134,7 @@ By this point the project had accumulated a lot of claims: golden roll-up totals
 
 The suite has 37 tests in four tiers, selected by tags. The component tier is the behavioral library's unit tests from earlier. The system tier simulates each architecture model end to end and checks the steady rate against a tolerance band, plus the worst-case fault response (0%, 0%, 67%, with EverSimmer's supervisor reporting Degraded). The analysis tier pins the claims themselves: the roll-up totals per variant, the exact 23-of-24 gate pattern, and the requirement that two runs of the seeded Monte Carlo produce bit-identical results. And a traceability tier verifies the artifacts that rot silently, checking that every requirement link still resolves to a live architecture element and every allocation set is complete. Suite membership is project metadata (files carry the project's Test label, and TestSuite.fromProject assembles everything), so there is no hard-coded list of test folders to forget about.
 
-The philosophy behind the pinned values: drift must be a conscious edit, never silence. And the suite earned its keep on its very first run. The golden-totals test failed on LeanBroth, because the "known" budget numbers I'd given the documentation agent had been recorded during that stereotype-dropping tooling incident, 1,400 kg and 190 kCr low, and the error had already leaked into a published explainer table. The test didn't catch the models being wrong. It caught *us* being wrong about the models, which in my experience is the more common failure mode.
+The philosophy behind the pinned values: drift must be a conscious edit, never silence. And the suite earned its keep on its very first run. The golden-totals test failed on LeanBroth, because the "known" budget numbers I'd given the documentation agent had been recorded during that stereotype-dropping tooling incident, 1,400 kg and 190 kCr low, and the error had already leaked into one of the repo's explainer tables. The test didn't catch the models being wrong. It caught *us* being wrong about the models, which in my experience is the more common failure mode.
 
 One limitation to report honestly: I wanted Verify links from the tests back to the requirements, so verification status would roll up in the Requirements Editor. In R2026a that linking is an interactive workflow only; there's no programmatic API for MATLAB test-to-requirement links yet. The traceability tests guard the link inventory in the meantime.
 
