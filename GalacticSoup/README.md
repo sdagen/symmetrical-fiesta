@@ -26,7 +26,7 @@ The facility receives ingredient deliveries by rocket, stores and prepares them,
 | `analysis/` | Roll-up, formal compliance gate, and trade-study analysis scripts and outputs (`variantMetrics.csv`, `complianceGate.csv`, `tradeScores.csv`, `mcWinShare.csv`). Run the whole chain with `runFullAnalysis`; prove the results with `tests/runAllTests` — `runFullAnalysis` regenerates them, `runAllTests` verifies them and also refreshes requirement verification status (SR-GS-002, SR-GS-026). See [`docs/06_trade_study_results.md`](docs/06_trade_study_results.md), [`docs/08_formal_compliance_gate.md`](docs/08_formal_compliance_gate.md), [`docs/11_test_organization.md`](docs/11_test_organization.md), and [`docs/12_simulink_test_organization.md`](docs/12_simulink_test_organization.md). |
 | `tests/` | Analysis/traceability MATLAB test tiers (`sltest.TestCase` subclasses), the generated Simulink Test system tier (`GalacticSoupSystemTests.mldatx`, six simulation cases with `Verify` links to requirements), and the suite runner; run everything with `tests/runAllTests`. See [`docs/11_test_organization.md`](docs/11_test_organization.md) and [`docs/12_simulink_test_organization.md`](docs/12_simulink_test_organization.md). |
 | `docs/` | This project's systems-engineering documentation set — requirements analysis, architecture rationale, and decision log. |
-| `work/` | MATLAB project build cache (`slprj/` etc.) and the derived, gitignored `work/coverage` test coverage report. Not source-controlled content; safe to delete/regenerate. |
+| `work/` | MATLAB project build cache (`slprj/` etc.). Not source-controlled content; safe to delete/regenerate. |
 
 ## Model inventory
 

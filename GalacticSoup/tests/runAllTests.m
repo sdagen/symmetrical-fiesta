@@ -12,16 +12,17 @@ function results = runAllTests(tier)
 %   the Simulink Test file's cases into the same suite, so both kinds run
 %   through the same matlab.unittest runner, appear in the same results
 %   table, and register their outcomes identically - including for
-%   requirement verification: after a full run the SR verification status
-%   is refreshed and asserted (SR-GS-002, SR-GS-026 verified by the
-%   simulation cases' Verify links).
+%   requirement verification.
 %
-%   A coverage report over analysis/ and behavior/build/ lands in
-%   work/coverage (derived output, not source-controlled).
+%   A full run ends with a REQUIREMENTS COVERAGE summary over all 28
+%   system requirements: implementation status (Implement links from the
+%   architectures), formal gate coverage (Refine links from the
+%   Requirements Table rows), and verification status (Verify links from
+%   the simulation test cases, with pass/fail from the run just executed).
+%   The two test-verified SRs are asserted verified-passed. For the
+%   formal document version, see analysis/makeRequirementsReport.
 
 import matlab.unittest.TestRunner
-import matlab.unittest.plugins.CodeCoveragePlugin
-import matlab.unittest.plugins.codecoverage.CoverageReport
 
 proj = currentProject;
 suite = matlab.unittest.TestSuite.fromProject(proj);
@@ -38,12 +39,6 @@ fprintf('suite: %d tests (%d simulation cases)\n', numel(suite), ...
     nnz(contains({suite.Name}, 'GalacticSoupSystemTests')));
 
 runner = TestRunner.withTextOutput('OutputDetail', 1);
-covDir = fullfile(char(proj.RootFolder), 'work', 'coverage');
-if ~isfolder(covDir), mkdir(covDir); end
-runner.addPlugin(CodeCoveragePlugin.forFolder( ...
-    {char(fullfile(proj.RootFolder,'analysis')), ...
-     char(fullfile(proj.RootFolder,'behavior','build'))}, ...
-    'Producing', CoverageReport(covDir)));
 
 bdclose('all');
 sltest.testmanager.clearResults;
@@ -52,17 +47,47 @@ disp(table(results));
 assertSuccess(results);
 
 if fullRun
-    % requirement verification rollup: fresh set state, then update
+    % ---- requirements coverage summary (fresh set state, then update) ----
     slreq.clear();
     srSet = slreq.load(fullfile(char(proj.RootFolder), ...
         'requirements','SystemRequirements.slreqx'));
+    updateImplementationStatus(srSet);
     updateVerificationStatus(srSet);
+    reqs = find(srSet, 'Type', 'Requirement');
+    nImpl = 0; nGate = 0; nVerPass = 0; nVerFail = 0; verIds = {};
+    for r = reqs
+        si = getImplementationStatus(r);
+        if si.implemented > 0, nImpl = nImpl + 1; end
+        for L = inLinks(r)
+            try
+                if strcmp(L.Type,'Refine') && ...
+                        contains(char(source(L).artifact), 'ComplianceGate')
+                    nGate = nGate + 1; break;
+                end
+            catch
+            end
+        end
+        sv = getVerificationStatus(r);
+        % unlinked requirements report total=1 with none=1; only count
+        % requirements that actually have executed-test coverage
+        if (sv.passed + sv.failed + sv.unexecuted) > 0
+            verIds{end+1} = r.Id; %#ok<AGROW>
+            if sv.failed > 0 || sv.unexecuted > 0
+                nVerFail = nVerFail + 1;
+            else
+                nVerPass = nVerPass + 1;
+            end
+        end
+    end
+    fprintf('\n=== Requirements coverage (%d system requirements) ===\n', numel(reqs));
+    fprintf('  implemented by architecture (Implement links): %d/%d\n', nImpl, numel(reqs));
+    fprintf('  checked by the formal gate (Refine links):     %d/%d\n', nGate, numel(reqs));
+    fprintf('  verified by executed tests (Verify links):     %d passed, %d not passed (%s)\n', ...
+        nVerPass, nVerFail, strjoin(verIds, ', '));
     for id = {'SR-GS-002','SR-GS-026'}
         st = getVerificationStatus(find(srSet, 'Id', id{1}));
-        fprintf('%s verification: %d passed, %d failed, %d unexecuted\n', ...
-            id{1}, st.passed, st.failed, st.unexecuted);
         assert(st.failed == 0 && st.unexecuted == 0, '%s not verified', id{1});
     end
+    fprintf('  formal report: run analysis/makeRequirementsReport\n');
 end
-fprintf('coverage report: %s\n', fullfile(covDir, 'index.html'));
 end
