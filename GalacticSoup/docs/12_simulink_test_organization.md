@@ -81,20 +81,21 @@ Collected here because most of them cost real debugging time and generalize past
 - **`OverrideStopTime` ordering.** `setProperty(tc, 'OverrideStopTime', true)` must be set before the numeric `StopTime` property; setting `StopTime` first has no effect because the override flag isn't yet enabled to honor it.
 - **Results hierarchy.** Extracting pass/fail requires walking `ResultSet` → `getTestFileResults` → `getTestSuiteResults` → `getTestCaseResults` — there is no flat "give me every case result" accessor.
 - **Wildcard-importing `sltest.testmanager.*`.** Importing the whole namespace into the base workspace shadows `clear`, `load`, and `run` for the rest of the session — build and runner scripts call fully-qualified `sltest.testmanager.clear`/`.load`/`.run` instead.
-- **`fromProject` double-counts `.mldatx` cases if not filtered.** `TestSuite.fromProject` adapts Simulink Test cases into the same suite as MATLAB tests; see §6 below for why the runner filters them back out.
+- **`fromProject` adapts `.mldatx` cases into the same suite as MATLAB tests.** An earlier version of the runner filtered them out and ran the file separately through `sltest.testmanager.run`, on the belief that only the Test Manager execution path registers results for requirement verification. That belief was wrong: running the adapted cases through the ordinary `matlab.unittest` runner registers verification results too (confirmed empirically — status reads `passed` after an adapter-only run). §6 describes the unified runner this enabled.
 
 ## 6. The unified runner
 
 [`runAllTests.m`](../tests/runAllTests.m) is still the single entry point (ADR-021), extended rather than replaced:
 
 ```
-results = runAllTests()            % everything: MATLAB tiers + Simulink Test system tier
-results = runAllTests("analysis")  % one MATLAB tier only, skips the .mldatx entirely
+results = runAllTests()            % all 37: MATLAB tiers + simulation cases, one suite
+results = runAllTests("analysis")  % one MATLAB tier by tag
+results = runAllTests("system")    % just the six simulation cases
 ```
 
-The MATLAB pass assembles `TestSuite.fromProject(proj)` exactly as before, then filters out anything whose name contains `GalacticSoupSystemTests` — because `fromProject` adapts `.mldatx` cases into the same suite alongside the MATLAB tests, and running them there would duplicate the six simulation cases without ever going through the Simulink Test Manager (`sltest.testmanager.run`), which is the specific execution path that registers results against the requirement links. Running a `.mldatx` case via the unittest adapter produces a pass/fail; running it via the Test Manager produces a pass/fail *and* a result the verification-status rollup can see. Only the latter is useful here, so the runner does both: the filtered MATLAB pass for everything else, then one explicit Test Manager run for the system tier.
+The runner assembles ONE suite: `TestSuite.fromProject(proj)` collects the MATLAB test classes (via their `Test` classification labels) and adapts the `.mldatx` cases into the same suite, and a single `matlab.unittest` runner executes all 37 with the coverage plugin attached. Simulation cases and MATLAB tests appear in the same results table, count in the same pass/fail total, and — the discovery that unlocked this design — register their results for requirement verification identically through the adapter path. No second engine, no filtering, no double run.
 
-When called with no tag filter, `runAllTests` runs, in order: the MATLAB tiers (component/analysis/traceability, with coverage), then `sltest.testmanager.run` on the loaded `.mldatx`, then the headless verification-rollup recipe from §4, asserting that both SR-GS-002 and SR-GS-026 come back verified-passed. A tag-filtered call (`runAllTests("analysis")`, etc.) returns after the MATLAB pass and never touches the Simulink Test file or the requirement set — the fast inner loop for iterating on a single MATLAB tier is unchanged from ADR-021.
+When called with no argument, `runAllTests` runs the full suite and finishes with the headless verification-rollup recipe from §4, asserting that both SR-GS-002 and SR-GS-026 come back verified-passed. A tier-filtered call selects by `TestTags`; `runAllTests("system")` selects the adapted simulation cases by name, since `.mldatx` cases carry no tags. Tier-filtered runs skip the requirement-set refresh — the fast inner loop for iterating on one tier is unchanged from ADR-021.
 
 ## 7. MATLAB Test vs. Simulink Test, for this project
 
