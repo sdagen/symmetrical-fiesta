@@ -1,4 +1,4 @@
-classdef tBehCookLine < matlab.unittest.TestCase
+classdef tBehCookLine < sltest.TestCase
     % tBehCookLine - Behavioral tests for the BehCookLine component model.
     %
     % Ports (fixed simulation order):

@@ -1,4 +1,4 @@
-classdef tBehQCStation < matlab.unittest.TestCase
+classdef tBehQCStation < sltest.TestCase
     % tBehQCStation - Behavioral tests for the BehQCStation component model.
     %
     % Ports (fixed simulation order):

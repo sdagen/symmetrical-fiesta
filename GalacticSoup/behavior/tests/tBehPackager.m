@@ -1,4 +1,4 @@
-classdef tBehPackager < matlab.unittest.TestCase
+classdef tBehPackager < sltest.TestCase
     % tBehPackager - Behavioral tests for the BehPackager component model.
     %
     % Ports (fixed simulation order):

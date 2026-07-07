@@ -1,4 +1,4 @@
-classdef (TestTags = {'analysis'}) tRollupInvariants < matlab.unittest.TestCase
+classdef (TestTags = {'analysis'}) tRollupInvariants < sltest.TestCase
     % Invariants of the stereotype roll-up: golden totals per variant
     % (mass/power/cost/volume from the architecture models), sane ranges,
     % caps parsed from requirement text, and internal flag consistency.

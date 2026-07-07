@@ -1,4 +1,4 @@
-classdef (TestTags = {'traceability'}) tTraceability < matlab.unittest.TestCase
+classdef (TestTags = {'traceability'}) tTraceability < sltest.TestCase
     % Traceability integrity: every requirement link resolves to a live
     % architecture element, and the allocation sets carry their full
     % complement. These are the artifacts that silently rot during

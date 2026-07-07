@@ -1,4 +1,4 @@
-classdef tBehPrepUnit < matlab.unittest.TestCase
+classdef tBehPrepUnit < sltest.TestCase
     % tBehPrepUnit - Behavioral tests for the BehPrepUnit component model.
     %
     % Ports (fixed simulation order):

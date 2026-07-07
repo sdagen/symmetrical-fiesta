@@ -1,4 +1,4 @@
-classdef (TestTags = {'analysis'}) tTradeDeterminism < matlab.unittest.TestCase
+classdef (TestTags = {'analysis'}) tTradeDeterminism < sltest.TestCase
     % The MCDA is seeded (rng(42)): two runs over the same metrics must be
     % bit-identical, and the current expected outcome is pinned so silent
     % drift in criteria or weights cannot pass unnoticed.

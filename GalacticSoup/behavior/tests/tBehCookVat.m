@@ -1,4 +1,4 @@
-classdef tBehCookVat < matlab.unittest.TestCase
+classdef tBehCookVat < sltest.TestCase
     % tBehCookVat - Behavioral tests for the BehCookVat component model.
     %
     % Ports (fixed simulation order):

@@ -1,4 +1,4 @@
-classdef tBehStorage < matlab.unittest.TestCase
+classdef tBehStorage < sltest.TestCase
     % tBehStorage - Behavioral tests for the BehStorage component model.
     %
     % Ports (fixed simulation order):

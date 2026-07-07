@@ -1,4 +1,4 @@
-classdef (TestTags = {'analysis'}) tGateAgreement < matlab.unittest.TestCase
+classdef (TestTags = {'analysis'}) tGateAgreement < sltest.TestCase
     % The formal Requirements Table gate and the expected verdicts.
     % runComplianceGate hard-asserts formal-vs-procedural agreement
     % internally; this test pins the expected verdict pattern on top:

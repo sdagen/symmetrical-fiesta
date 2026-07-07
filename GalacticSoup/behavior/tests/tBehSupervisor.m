@@ -1,4 +1,4 @@
-classdef tBehSupervisor < matlab.unittest.TestCase
+classdef tBehSupervisor < sltest.TestCase
     % tBehSupervisor - Behavioral tests for the BehSupervisor component model.
     %
     % Ports (fixed simulation order):
