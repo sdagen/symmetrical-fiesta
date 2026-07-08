@@ -63,7 +63,11 @@ common = { ...
  ...                           % to 95.2 C - caught by the SR-GS-008 criterion
  ...                           % (ADR-026); 94 leaves control-ripple margin
  'VatLoss_WpK',    15;     ... % convective loss coefficient (h*A)
- 'Gravity_g',      1};         % ambient gravity (g); overridden per run for SR-GS-015
+ 'Gravity_g',      1;      ... % ambient gravity (g); overridden per run for SR-GS-015
+ 'QC_ContamIncidence', 0;     ... % contaminated fraction of cooked flow; 0 nominal,
+ ...                           % overridden per run for SR-GS-007 (ADR-027)
+ 'QC_DetectSensitivity', 0.995}; % QC contamination detection sensitivity
+ ...                             % (requirement floor is 0.99; 0.995 leaves margin)
 for i = 1:size(common,1), addEntry(sCo, common{i,1}, common{i,2}); end
 saveChanges(dCo);
 

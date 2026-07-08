@@ -53,6 +53,37 @@ classdef tBehQCStation < sltest.TestCase
             testCase.verifyLessThan(mean(passflow(outageIdx)), 0.10 * nominalPass);
         end
 
+        function contaminationDetectionSplit(testCase)
+            % SR-GS-007 component-level: contamination applies to the
+            % quality-passed stream, detected mass moves to rejects at
+            % DetectSensitivity, escaped mass ships with the passed flow.
+            stopTime = 2000;
+            inflowBps = 0.02;
+            inc = 0.05; sens = 0.995;
+            extInput = sprintf('[0 %g 1; %g %g 1]', inflowBps, stopTime, inflowBps);
+
+            out = testCase.runModel(extInput, stopTime, 'CalibPeriod_s', 1e6, ...
+                'ContamIncidence', inc, 'DetectSensitivity', sens);
+
+            time = out.yout{1}.Values.Time;
+            tailIdx = time >= (stopTime - 500);
+            passOut = mean(out.yout{1}.Values.Data(tailIdx));
+            rejOut  = mean(out.yout{2}.Values.Data(tailIdx));
+            det     = mean(out.yout{4}.Values.Data(tailIdx));
+            esc     = mean(out.yout{5}.Values.Data(tailIdx));
+
+            passQ  = inflowBps * (1 - tBehQCStation.RejectFrac);
+            contam = passQ * inc;
+            testCase.verifyEqual(det, contam * sens, 'RelTol', 0.01, 'detected split');
+            testCase.verifyEqual(esc, contam * (1 - sens), 'RelTol', 0.01, 'escaped split');
+            testCase.verifyEqual(det / (det + esc), sens, 'RelTol', 1e-6, 'sensitivity exact');
+            testCase.verifyEqual(passOut, passQ - det, 'RelTol', 0.01, 'pass stream loses detected');
+            testCase.verifyEqual(rejOut, inflowBps * tBehQCStation.RejectFrac + det, ...
+                'RelTol', 0.01, 'reject stream gains detected');
+            % conservation: nothing created or destroyed by detection
+            testCase.verifyEqual(passOut + rejOut, inflowBps, 'RelTol', 0.02, 'mass conservation');
+        end
+
         function disabledStationBlocksFlow(testCase)
             % enable<0.5 should stop the pass stream entirely.
             stopTime = 200;

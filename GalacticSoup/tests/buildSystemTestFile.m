@@ -34,7 +34,7 @@ slreq.clear();
 srSet = slreq.load(fullfile(char(proj.RootFolder), 'requirements', 'SystemRequirements.slreqx'));
 
 % purge stale Verify links from earlier builds of this artifact
-for id = {'SR-GS-002','SR-GS-026','SR-GS-008','SR-GS-015','SR-GS-025'}
+for id = {'SR-GS-002','SR-GS-026','SR-GS-008','SR-GS-015','SR-GS-025','SR-GS-007'}
     sr = find(srSet, 'Id', id{1});
     for L = inLinks(sr)
         try
@@ -178,10 +178,46 @@ for i = 1:size(flt,1)
         modeCheck, flt{i,4});
 end
 
+% --- Contamination suite: SR-GS-007 detection sensitivity at 2% incidence ---
+% Criteria measure sensitivity = detected/(detected+escaped) from the
+% logged QC signals; design sensitivity 0.995 vs the 0.99 requirement
+% floor. Both robotic-QC variants link; LeanBroth is covered by the
+% analysis sweep (already sub-floor nominal, no case needed).
+contamSuite = createTestSuite(tf, 'Contamination');
+for stray = getTestCases(contamSuite)
+    remove(stray);
+end
+sensFrag = sprintf(['lg = test.sltest_simout.get(''logsout'');\n' ...
+    'det = lg.get(''contamDetected_bps'').Values;\n' ...
+    'esc = lg.get(''contamEscaped_bps'').Values;\n' ...
+    'sens = trapz(det.Time,det.Data)/(trapz(det.Time,det.Data)+trapz(esc.Time,esc.Data));\n' ...
+    'test.verifyGreaterThanOrEqual(sens, 0.99, ''SR-GS-007 sensitivity floor'');\n' ...
+    'test.verifyEqual(sens, 0.995, ''AbsTol'', 1e-3, ''design sensitivity'');\n']);
+% {name, model, bph at 2% incidence, links}
+ctm = { ...
+ 'HyperCook contamination 2 percent',  'PhysicalHyperCook',  302.3, {'SR-GS-007'}; ...
+ 'EverSimmer contamination 2 percent', 'PhysicalEverSimmer', 227.3, {'SR-GS-007'}};
+for i = 1:size(ctm,1)
+    tc = createTestCase(contamSuite, 'simulation', ctm{i,1});
+    setProperty(tc, 'Model', ctm{i,2});
+    setProperty(tc, 'OverrideStopTime', true);
+    setProperty(tc, 'StopTime', 14400);
+    ps = addParameterSet(tc, 'Name', 'contamination');
+    addParameterOverride(ps, 'QC_ContamIncidence', 0.02);
+    cc = getCustomCriteria(tc);
+    cc.Enabled = true;
+    cc.Callback = sprintf([harvest ...
+        'sel = flow.Time > 7200;\n' ...
+        'bph = trapz(flow.Time(sel), flow.Data(sel))/(flow.Time(end)-7200)*3600;\n' ...
+        floorFrag ...
+        'test.verifyEqual(bph, %g, ''AbsTol'', 3, ''regression band'');\n' ...
+        '%s'], ctm{i,3}, sensFrag);
+end
+
 % save FIRST so cases carry persistent IDs, then link (links made against
 % unsaved cases capture provisional IDs and never match executed results)
 saveToFile(tf);
-linkSpec = [nom(:,[1 5]); flt(:,[1 6]); grv(:,[1 6])];
+linkSpec = [nom(:,[1 5]); flt(:,[1 6]); grv(:,[1 6]); ctm(:,[1 4])];
 nLinks = 0;
 for s = getTestSuites(tf)
     for tc = getTestCases(s)
@@ -199,5 +235,5 @@ saveToFile(tf);
 slreq.saveAll();
 pf = {proj.Files.Path};
 if ~any(strcmpi(pf, tfPath)), addFile(proj, tfPath); end
-fprintf('%s built: 9 cases, %d Verify links\n', tfPath, nLinks);
+fprintf('%s built: 11 cases, %d Verify links\n', tfPath, nLinks);
 end

@@ -143,7 +143,8 @@ line(p, dr, [sg '/2']);
 gate = faultGate(p, 'Fault_T_QC');
 en = enableOf(p, gate);
 m = addRef(p,'QC','BehQCStation', {'QCRate_bph','LB_QCRate_bph'; 'RejectFrac','LB_QCReject'; ...
-    'CalibPeriod_s','LB_QCCalibPeriod_s'; 'CalibTime_s','LB_QCCalibTime_s'});
+    'CalibPeriod_s','LB_QCCalibPeriod_s'; 'CalibTime_s','LB_QCCalibTime_s'; ...
+    'ContamIncidence','QC_ContamIncidence'; 'DetectSensitivity','QC_DetectSensitivity'});
 lineTo(p, [sg '/1'], [m '/1']); lineTo(p, [en '/1'], [m '/2']);
 outs = makeOuts(p,'approvedSoup','SoupStream', {'batchId','0';'temp_C','90';'contamination_ppm','0'});
 lineTo(p, [m '/1'], outs('flow_bps'));
@@ -151,6 +152,8 @@ lit = addB(p,'ToLitres','simulink/Math Operations/Gain',{'Gain','1800'});
 lineTo(p, [m '/1'], [lit '/1']); lineTo(p, [lit '/1'], outs('volume_L'));
 stubStatus(p,'statusQA', '3', gate);
 term(p, [m '/2']); term(p, [m '/3']); term(p, [sg '/2']); term(p, [sg '/3']);
+term(p, [m '/4']); term(p, [m '/5']);
+logContam(p, m);
 
 % --- SemiAutoPackager: surge -> BehPackager ---
 p = beh(mdlA, [mdl '/SemiAutoPackager']);
@@ -332,7 +335,8 @@ lineTo(p, [dr '/1'], [sg '/2']);
 gate = faultGate(p, 'Fault_T_QC');
 en = enableOf(p, gate);
 m = addRef(p,'QC','BehQCStation', {'QCRate_bph','HC_QCRate_bph'; 'RejectFrac','HC_QCReject'; ...
-    'CalibPeriod_s','HC_QCCalibPeriod_s'; 'CalibTime_s','HC_QCCalibTime_s'});
+    'CalibPeriod_s','HC_QCCalibPeriod_s'; 'CalibTime_s','HC_QCCalibTime_s'; ...
+    'ContamIncidence','QC_ContamIncidence'; 'DetectSensitivity','QC_DetectSensitivity'});
 lineTo(p, [sg '/1'], [m '/1']); lineTo(p, [en '/1'], [m '/2']);
 outs = makeOuts(p,'approvedSoup','SoupStream', {'batchId','0';'temp_C','90';'contamination_ppm','0'});
 lineTo(p, [m '/1'], outs('flow_bps'));
@@ -340,6 +344,8 @@ lit = addB(p,'ToLitres','simulink/Math Operations/Gain',{'Gain','1800'});
 lineTo(p, [m '/1'], [lit '/1']); lineTo(p, [lit '/1'], outs('volume_L'));
 stubStatus(p,'statusQA', '10', gate);
 term(p, [m '/2']); term(p, [m '/3']); term(p, [sg '/2']); term(p, [sg '/3']);
+term(p, [m '/4']); term(p, [m '/5']);
+logContam(p, m);
 
 p = beh(mdlA, [mdl '/HighSpeedPackagingLine']);
 inEl(p,'approvedSoup','flow_bps');
@@ -510,7 +516,8 @@ for cellN = 1:3
     gate = faultGate(p, fvar);
     en = enableOf(p, gate);
     m = addRef(p,'QC','BehQCStation', {'QCRate_bph','ES_QCRate_bph'; 'RejectFrac','ES_QCReject'; ...
-        'CalibPeriod_s','ES_QCCalibPeriod_s'; 'CalibTime_s','ES_QCCalibTime_s'});
+        'CalibPeriod_s','ES_QCCalibPeriod_s'; 'CalibTime_s','ES_QCCalibTime_s'; ...
+        'ContamIncidence','QC_ContamIncidence'; 'DetectSensitivity','QC_DetectSensitivity'});
     lineTo(p, [sg '/1'], [m '/1']); lineTo(p, [en '/1'], [m '/2']);
     outs = makeOuts(p,'approvedSoup','SoupStream', {'batchId','0';'temp_C','90';'contamination_ppm','0'});
     lineTo(p, [m '/1'], outs('flow_bps'));
@@ -518,6 +525,8 @@ for cellN = 1:3
     lineTo(p, [m '/1'], [lit '/1']); lineTo(p, [lit '/1'], outs('volume_L'));
     stubStatus(p,'statusQA', '4', gate);
     term(p, [m '/2']); term(p, [m '/3']); term(p, [sg '/2']); term(p, [sg '/3']);
+    term(p, [m '/4']); term(p, [m '/5']);
+    if cellN == 1, logContam(p, m); end
 
     p = beh(mdlA, [cellPath '/CellPackager']);
     inEl(p,'approvedSoup','flow_bps');
@@ -729,6 +738,17 @@ if ~isempty(instParams)
     set_param([p '/' name], 'InstanceParameters', ip);
 end
 m = name;
+end
+
+function logContam(p, m)
+% mark the QC contamination outports for signal logging (SR-GS-007):
+% criteria compute sensitivity = detected/(detected+escaped) from logsout.
+% Must run AFTER the ports are wired (terminators suffice).
+ph = get_param([p '/' m], 'PortHandles');
+set_param(get_param(ph.Outport(4),'Line'), 'Name', 'contamDetected_bps');
+set_param(ph.Outport(4), 'DataLogging', 'on');
+set_param(get_param(ph.Outport(5),'Line'), 'Name', 'contamEscaped_bps');
+set_param(ph.Outport(5), 'DataLogging', 'on');
 end
 
 function g = faultGate(p, varName)
