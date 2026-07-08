@@ -36,7 +36,7 @@ The production cell is my favorite part: a composite component with a miniature 
 
 ![Inside an EverSimmer production cell](images/EverSimmer_ProductionCell.png)
 
-One design decision worth pausing on: these are three separate architecture models, not variant components in one model. The variants differ in topology, hierarchy depth, and component count, and each needs its own allocation set and roll-up. Three models sharing one interface dictionary and one stereotype profile turned out much cleaner, and that reasoning went into an ADR-style decision log (twenty-four entries by the end of this post), the single most useful artifact for picking work back up weeks later.
+One design decision worth pausing on: these are three separate architecture models, not variant components in one model. The variants differ in topology, hierarchy depth, and component count, and each needs its own allocation set and roll-up. Three models sharing one interface dictionary and one stereotype profile turned out much cleaner, and that reasoning went into an ADR-style decision log (twenty-nine entries by the end of this post), the single most useful artifact for picking work back up weeks later.
 
 ## Making the variants measurable
 
@@ -90,9 +90,9 @@ The result turns a point verdict into a probability: LeanBroth misses the 200 bo
 
 ## Testing the evidence, not just the models
 
-By now the project was full of claims (golden totals, an expected gate verdict, a deterministic Monte Carlo result) that lived as assertions inside the very scripts that produced them. So they became a test suite: 47 tests in four tiers, from component unit tests up through full architecture simulations, with the expected values recorded as regression baselines so that drift must be a conscious edit, never silence. The suite earned its keep on its first run, when the golden-totals test caught stale LeanBroth numbers that had already leaked into a documentation table. It didn't catch the models being wrong; it caught *us* being wrong about the models.
+By now the project was full of claims (golden totals, an expected gate verdict, a deterministic Monte Carlo result) that lived as assertions inside the very scripts that produced them. So they became a test suite: 61 tests in four tiers, from component unit tests up through full architecture simulations, with the expected values recorded as regression baselines so that drift must be a conscious edit, never silence. The suite earned its keep on its first run, when the golden-totals test caught stale LeanBroth numbers that had already leaked into a documentation table. It didn't catch the models being wrong; it caught *us* being wrong about the models.
 
-The best part came from mixing test frameworks. MATLAB tests can't be linked to requirements programmatically in R2026a, but Simulink Test cases can, so the simulation tier moved into a generated Simulink Test file whose cases carry Verify links, attached deliberately: LeanBroth's cases stay unlinked regression baselines, because a green test must not vouch for a floor the design genuinely misses. The payoff is the Requirements Editor's Verified column turning green from a headless run. And instead of a code coverage report (circular, when the tests exercise the code that computes the values they assert), the suite now ends with requirements coverage: 28 of 28 requirements implemented, 8 checked by the executable gate, 5 verified by executed tests, and 23 open verification slots as an honest to-do list.
+The best part came from mixing test frameworks. MATLAB tests can't be linked to requirements programmatically in R2026a, but Simulink Test cases can, so the simulation tier moved into a generated Simulink Test file whose cases carry Verify links, attached deliberately: LeanBroth's cases stay unlinked regression baselines, because a green test must not vouch for a floor the design genuinely misses. The payoff is the Requirements Editor's Verified column turning green from a headless run. And instead of a code coverage report (circular, when the tests exercise the code that computes the values they assert), the suite now ends with requirements coverage: 28 of 28 requirements implemented, 8 checked by the executable gate, 8 verified by executed tests, and 20 open verification slots as an honest to-do list.
 
 runFullAnalysis regenerates every number in this post, runAllTests proves them, and the Requirements Editor shows the receipts.
 
@@ -103,6 +103,12 @@ One requirement had been green on paper since the first post and touched by noth
 ![Throughput across the required gravity range, 0.1 g to 12 g](images/gravity_throughput.png)
 
 EverSimmer, the trade winner, the variant that survives any single fault, fails at 0.1 g: 189 bowls per hour against the 200 floor, because slow-draining vats are exactly the wrong technology for microgravity. Only HyperCook holds the floor across the whole range, so only HyperCook earned Verify links to the gravity requirement; EverSimmer's shortfall is baselined as an unlinked regression case and a redesign flag (pump-assisted drains). And while wiring up the new test criteria, the serving-temperature check failed on its first run and caught a second design flaw: the vat targeted 95 C, the top of the required 70-95 C serving band, and control ripple served soup at 95.2. The fix was design margin (target 94), not test tolerance. Requirements verified by executed tests went from 2 to 5, and both findings came from asking the models questions the spreadsheet never could.
+
+## Three more requirements, one pattern
+
+The gravity exercise turned into a repeatable recipe: find a requirement that is implemented on paper but exercised by nothing, wire the physics into the behaviors with defaults that change nothing at nominal, sweep the design space, and attach Verify links only where a passing test honestly means the requirement is met. Three more requirements went through it in sequence. Contamination detection: the QC stations gained a detection model (the contamination signal on the soup bus had been a constant zero since it was defined), swept across incidence rates, with a boundary case proving a detector specified at the 99% floor meets it with zero margin, which is exactly why the design value is 99.5%. Transport loading: the loaders gained dock queues fed by parameters that had sat unused in the dictionaries, and the ten-minute loading requirement now has a measured latency and a capacity margin cliff, with LeanBroth standing closest to the edge. And runtime recipe selection: every prep unit now stamps a live recipe schedule, and changeover cost lands where it physically belongs, so the continuous lines pay flush downtime per switch while batch vats hide changeover in the clean phase they already have. That last one produced my favorite reversal of the whole study: recipe flexibility is where batch cooking finally wins one.
+
+Requirements verified by executed simulation now stand at 8 of 28, each with its own design-space sweep, and every sweep so far has paid for itself with either a margin number nobody had or a finding nobody expected.
 
 ## Working with the agent, this time
 
@@ -124,6 +130,6 @@ Same answer as last time, with more conviction. What changed my mind about the c
 
 ## Now it's your turn
 
-The full project (architectures with inline behavior, the component library, requirements, analysis, tests, and all twenty-four ADRs) is in the repo linked below, along with the skills from the first post. Clone it, run runFullAnalysis, run runAllTests, and check my math. Then tell your agent you want a fourth variant and see what it proposes.
+The full project (architectures with inline behavior, the component library, requirements, analysis, tests, and all twenty-nine ADRs) is in the repo linked below, along with the skills from the first post. Clone it, run runFullAnalysis, run runAllTests, and check my math. Then tell your agent you want a fourth variant and see what it proposes.
 
 Have you tried running an architecture trade study with an AI agent in the loop? Where did it help, and where did you have to take the wheel? Let us know in the comments.
