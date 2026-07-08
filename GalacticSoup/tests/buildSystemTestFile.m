@@ -34,7 +34,7 @@ slreq.clear();
 srSet = slreq.load(fullfile(char(proj.RootFolder), 'requirements', 'SystemRequirements.slreqx'));
 
 % purge stale Verify links from earlier builds of this artifact
-for id = {'SR-GS-002','SR-GS-026','SR-GS-008','SR-GS-015','SR-GS-025','SR-GS-007'}
+for id = {'SR-GS-002','SR-GS-026','SR-GS-008','SR-GS-015','SR-GS-025','SR-GS-007','SR-GS-006'}
     sr = find(srSet, 'Id', id{1});
     for L = inLinks(sr)
         try
@@ -214,10 +214,49 @@ for i = 1:size(ctm,1)
         '%s'], ctm{i,3}, sensFrag);
 end
 
+% --- TransportLoading suite: SR-GS-006 loading latency at nominal ---
+% Latency = dock-queue wait + transit, measured as the median
+% mass-threshold lag between the logged packed/loaded cumulative curves.
+% All three variants link: LeanBroth fails the throughput floor but
+% genuinely satisfies loading latency - the link semantics cut both ways.
+transSuite = createTestSuite(tf, 'TransportLoading');
+for stray = getTestCases(transSuite)
+    remove(stray);
+end
+latFrag = [ ...
+    'lg = test.sltest_simout.get(''logsout'');\n' ...
+    'pk = lg.get(''packedFlow_bps'').Values; ld = lg.get(''loadedFlow_bps'').Values;\n' ...
+    'cumP = cumtrapz(pk.Time, pk.Data); cumL = cumtrapz(ld.Time, ld.Data);\n' ...
+    'Xs = linspace(0.2, 0.8, 13) * min(cumP(end), cumL(end));\n' ...
+    'lag = zeros(size(Xs));\n' ...
+    'for k = 1:numel(Xs)\n' ...
+    '    tP = interp1(cumP + (1:numel(cumP))''*1e-9, pk.Time, Xs(k));\n' ...
+    '    tL = interp1(cumL + (1:numel(cumL))''*1e-9, ld.Time, Xs(k));\n' ...
+    '    lag(k) = tL - tP;\n' ...
+    'end\n' ...
+    'lag = median(lag);\n' ...
+    'test.verifyLessThanOrEqual(lag, 600, ''SR-GS-006 ten-minute limit'');\n'];
+% {name, model, transit baseline s, links}
+trn = { ...
+ 'HyperCook transport loading',  'PhysicalHyperCook',  30,  {'SR-GS-006'}; ...
+ 'LeanBroth transport loading',  'PhysicalLeanBroth',  120, {'SR-GS-006'}; ...
+ 'EverSimmer transport loading', 'PhysicalEverSimmer', 60,  {'SR-GS-006'}};
+for i = 1:size(trn,1)
+    tc = createTestCase(transSuite, 'simulation', trn{i,1});
+    setProperty(tc, 'Model', trn{i,2});
+    setProperty(tc, 'OverrideStopTime', true);
+    setProperty(tc, 'StopTime', 14400);
+    cc = getCustomCriteria(tc);
+    cc.Enabled = true;
+    cc.Callback = sprintf([latFrag ...
+        'test.verifyEqual(lag, %g, ''AbsTol'', 15, ''latency regression band'');\n'], ...
+        trn{i,3});
+end
+
 % save FIRST so cases carry persistent IDs, then link (links made against
 % unsaved cases capture provisional IDs and never match executed results)
 saveToFile(tf);
-linkSpec = [nom(:,[1 5]); flt(:,[1 6]); grv(:,[1 6]); ctm(:,[1 4])];
+linkSpec = [nom(:,[1 5]); flt(:,[1 6]); grv(:,[1 6]); ctm(:,[1 4]); trn(:,[1 4])];
 nLinks = 0;
 for s = getTestSuites(tf)
     for tc = getTestCases(s)
@@ -235,5 +274,5 @@ saveToFile(tf);
 slreq.saveAll();
 pf = {proj.Files.Path};
 if ~any(strcmpi(pf, tfPath)), addFile(proj, tfPath); end
-fprintf('%s built: 11 cases, %d Verify links\n', tfPath, nLinks);
+fprintf('%s built: 14 cases, %d Verify links\n', tfPath, nLinks);
 end

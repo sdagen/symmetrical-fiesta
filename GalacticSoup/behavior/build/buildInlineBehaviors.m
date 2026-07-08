@@ -172,11 +172,12 @@ lineTo(p, [m '/1'], outs('flow_bps'));
 stubStatus(p,'statusPack', '20', gate);
 term(p, [sg '/2']); term(p, [sg '/3']);
 
-% --- SharedCraneDock: outbound pass ---
+% --- SharedCraneDock: dock queue + crane pickup + transit (SR-GS-006) ---
 p = beh(mdlA, [mdl '/SharedCraneDock']);
 inEl(p,'sealedContainers','flow_bps');
 outs = makeOuts(p,'loadedShipment','SealedContainerBatch', {'batchId','0';'count','0';'sealRating_days','365'});
-passThrough(p, blkOf(p,'sealedContainers'), outs('flow_bps'), 240/3600);
+dockPath(p, blkOf(p,'sealedContainers'), outs('flow_bps'), ...
+    'Transport_Rate_bph/3600', 'Transport_Latency_s');
 makeOuts(p,'manifest','ShippingManifestMsg', {'destinationId','0';'batchId','0';'count','0';'mass_kg','0'});
 stubStatus(p,'statusDispatch', '18', '1');
 
@@ -366,7 +367,8 @@ term(p, [sg '/2']); term(p, [sg '/3']);
 p = beh(mdlA, [mdl '/CargoLoaderGantry']);
 inEl(p,'sealedContainers','flow_bps');
 outs = makeOuts(p,'loadedShipment','SealedContainerBatch', {'batchId','0';'count','0';'sealRating_days','365'});
-passThrough(p, 'in_sealedContainers', outs('flow_bps'), 360/3600);
+dockPath(p, 'in_sealedContainers', outs('flow_bps'), ...
+    'Transport_Rate_bph/3600', 'Transport_Latency_s');
 makeOuts(p,'manifest','ShippingManifestMsg', {'destinationId','0';'batchId','0';'count','0';'mass_kg','0'});
 stubStatus(p,'statusDispatch', '15', '1');
 
@@ -570,7 +572,7 @@ for s = 1:3, inEl(p, sprintf('containersCell%d',s), 'flow_bps'); end
 sm = addB(p,'ContainerSum','simulink/Math Operations/Add',{'Inputs','+++'});
 for s = 1:3, lineTo(p, sprintf('in_containersCell%d/1',s), sprintf('%s/%d',sm,s)); end
 outs = makeOuts(p,'loadedShipment','SealedContainerBatch', {'batchId','0';'count','0';'sealRating_days','365'});
-passThrough(p, sm, outs('flow_bps'), 280/3600);
+dockPath(p, sm, outs('flow_bps'), 'Transport_Rate_bph/3600', 'Transport_Latency_s');
 makeOuts(p,'manifest','ShippingManifestMsg', {'destinationId','0';'batchId','0';'count','0';'mass_kg','0'});
 stubStatus(p,'statusDispatch', '12', '1');
 
@@ -765,6 +767,43 @@ add_block('simulink/Math Operations/Product', [p '/' en]);
 sp = blkOf(p, 'directive');
 add_line(p, [sp '/1'], [en '/1']);
 add_line(p, [gate '/1'], [en '/2']);
+end
+
+function dockPath(p, srcBlk, dstBlk, rateExpr, latExpr)
+% loading dock (SR-GS-006, ADR-028): fluid queue + transit delay.
+% out = min(pickupRate, in + level/30) - exact pass-through when the dock
+% is empty (neutrality: no chatter loss), pickup-rate-capped once a
+% backlog forms; level integrates in-out and saturates at [0, 600] bowls.
+% Loading latency = queue wait + Transport_Latency_s; measured from the
+% logged packedFlow_bps / loadedFlow_bps pair.
+ns = addB(p,'DockNet','simulink/Math Operations/Add',{'Inputs','+-'});
+lv = addB(p,'DockLevel','simulink/Continuous/Integrator', ...
+    {'LimitOutput','on'; 'LowerSaturationLimit','0'; 'UpperSaturationLimit','600'});
+dg = addB(p,'DockDrain','simulink/Math Operations/Gain',{'Gain','1/30'});
+av = addB(p,'DockAvail','simulink/Math Operations/Add',{'Inputs','++'});
+ck = addB(p,'PickupRate','simulink/Sources/Constant',{'Value',rateExpr});
+om = addB(p,'PickupMin','simulink/Math Operations/MinMax',{'Function','min'; 'Inputs','2'});
+td = addB(p,'TransitDelay','simulink/Continuous/Transport Delay',{'DelayTime',latExpr});
+add_line(p, [srcBlk '/1'], [ns '/1']);
+add_line(p, [om '/1'], [ns '/2']);
+add_line(p, [ns '/1'], [lv '/1']);
+add_line(p, [lv '/1'], [dg '/1']);
+add_line(p, [srcBlk '/1'], [av '/1']);
+add_line(p, [dg '/1'], [av '/2']);
+add_line(p, [av '/1'], [om '/1']);
+add_line(p, [ck '/1'], [om '/2']);
+% the root port carries the queue output UNDELAYED (throughput baselines
+% must not pick up a transit phase shift); the transit delay rides a
+% measurement tap whose logged signal defines loading latency
+add_line(p, [om '/1'], [dstBlk '/1']);
+add_line(p, [om '/1'], [td '/1']);
+term(p, [td '/1']);
+ph = get_param([p '/' srcBlk], 'PortHandles');
+set_param(get_param(ph.Outport(1),'Line'), 'Name', 'packedFlow_bps');
+set_param(ph.Outport(1), 'DataLogging', 'on');
+ph = get_param([p '/' td], 'PortHandles');
+set_param(get_param(ph.Outport(1),'Line'), 'Name', 'loadedFlow_bps');
+set_param(ph.Outport(1), 'DataLogging', 'on');
 end
 
 function passThrough(p, srcBlk, dstBlk, cap)
