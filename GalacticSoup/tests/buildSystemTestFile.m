@@ -34,7 +34,7 @@ slreq.clear();
 srSet = slreq.load(fullfile(char(proj.RootFolder), 'requirements', 'SystemRequirements.slreqx'));
 
 % purge stale Verify links from earlier builds of this artifact
-for id = {'SR-GS-002','SR-GS-026','SR-GS-008','SR-GS-015','SR-GS-025','SR-GS-007','SR-GS-006','SR-GS-001'}
+for id = {'SR-GS-002','SR-GS-026','SR-GS-008','SR-GS-015','SR-GS-025','SR-GS-007','SR-GS-006','SR-GS-001','SR-GS-018'}
     sr = find(srSet, 'Id', id{1});
     for L = inLinks(sr)
         try
@@ -324,10 +324,53 @@ for i = 1:size(edu,1)
         edu{i,5});
 end
 
+% --- RocketTurnaround suite: SR-GS-018 (fill + handling <= 1200 s) ---
+% Turnaround measured from the logged loaded-flow cumulative curve at the
+% 60-bowl design shipment plus 120 s handling. HyperCook and EverSimmer
+% pass and link; LeanBroth misses by 41.5 s at the design point - a
+% finding, baselined unlinked with an explicit > 1200 s assertion.
+rktSuite = createTestSuite(tf, 'RocketTurnaround');
+for stray = getTestCases(rktSuite)
+    remove(stray);
+end
+rktFrag = [ ...
+    'lg = test.sltest_simout.get(''logsout'');\n' ...
+    'ld = lg.get(''loadedFlow_bps'').Values;\n' ...
+    'cumL = cumtrapz(ld.Time, ld.Data) + (1:numel(ld.Time))''*1e-9;\n' ...
+    'starts = linspace(0.3, 0.7, 11) * cumL(end);\n' ...
+    'ft = zeros(size(starts));\n' ...
+    'for j = 1:numel(starts)\n' ...
+    '    t0 = interp1(cumL, ld.Time, starts(j));\n' ...
+    '    t1 = interp1(cumL, ld.Time, starts(j) + 60);\n' ...   % Rocket_Load_bowls
+    '    ft(j) = t1 - t0;\n' ...
+    'end\n' ...
+    'turnaround = median(ft) + 120;\n'];                        % Rocket_Handling_s
+% {name, model, turnaround baseline s, passes, links}
+rkt = { ...
+ 'HyperCook rocket turnaround',  'PhysicalHyperCook',  808.1,  true,  {'SR-GS-018'}; ...
+ 'EverSimmer rocket turnaround', 'PhysicalEverSimmer', 1086.0, true,  {'SR-GS-018'}; ...
+ 'LeanBroth rocket turnaround - regression baseline', 'PhysicalLeanBroth', 1241.5, false, {}};
+for i = 1:size(rkt,1)
+    tc = createTestCase(rktSuite, 'simulation', rkt{i,1});
+    setProperty(tc, 'Model', rkt{i,2});
+    setProperty(tc, 'OverrideStopTime', true);
+    setProperty(tc, 'StopTime', 14400);
+    if rkt{i,4}
+        lim = 'test.verifyLessThanOrEqual(turnaround, 1200, ''SR-GS-018 twenty-minute limit'');\n';
+    else
+        lim = 'test.verifyGreaterThan(turnaround, 1200, ''SR-GS-018 finding: retire this case if fixed'');\n';
+    end
+    cc = getCustomCriteria(tc);
+    cc.Enabled = true;
+    cc.Callback = sprintf([rktFrag lim ...
+        'test.verifyEqual(turnaround, %g, ''AbsTol'', 30, ''turnaround regression band'');\n'], ...
+        rkt{i,3});
+end
+
 % save FIRST so cases carry persistent IDs, then link (links made against
 % unsaved cases capture provisional IDs and never match executed results)
 saveToFile(tf);
-linkSpec = [nom(:,[1 5]); flt(:,[1 6]); grv(:,[1 6]); ctm(:,[1 4]); trn(:,[1 4]); rcp(:,[1 5])];
+linkSpec = [nom(:,[1 5]); flt(:,[1 6]); grv(:,[1 6]); ctm(:,[1 4]); trn(:,[1 4]); rcp(:,[1 5]); rkt(:,[1 5])];
 nLinks = 0;
 for s = getTestSuites(tf)
     for tc = getTestCases(s)
@@ -345,5 +388,5 @@ saveToFile(tf);
 slreq.saveAll();
 pf = {proj.Files.Path};
 if ~any(strcmpi(pf, tfPath)), addFile(proj, tfPath); end
-fprintf('%s built: 19 cases, %d Verify links\n', tfPath, nLinks);
+fprintf('%s built: 22 cases, %d Verify links\n', tfPath, nLinks);
 end

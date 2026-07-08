@@ -70,8 +70,11 @@ common = { ...
  ...                                % (requirement floor is 0.99; 0.995 leaves margin)
  'Recipe_Count',   8;      ... % distinct recipes in the runtime rotation (SR-GS-001)
  'Recipe_Block_s', 1800;   ... % campaign block length: 8 recipes per 4 h run
- 'Recipe_Flush_s', 0};         % continuous-line changeover flush; 0 nominal
+ 'Recipe_Flush_s', 0;      ... % continuous-line changeover flush; 0 nominal
  ...                           % (neutral), overridden per run for ADR-029 sweeps
+ 'Rocket_Load_bowls', 60;  ... % shipment size per delivery rocket (estimate,
+ ...                           % swept in ADR-031 - SR-GS-018 turnaround)
+ 'Rocket_Handling_s', 120};    % dock/undock overhead per rocket (estimate)
 for i = 1:size(common,1), addEntry(sCo, common{i,1}, common{i,2}); end
 saveChanges(dCo);
 

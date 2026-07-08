@@ -315,3 +315,13 @@ Architecture Decision Record (ADR) style log for the Intergalactic Vegan Soup Fa
 **Status.** Accepted.
 
 **Consequences.** Measured endurance: 6.41 / 4.66 / 5.44 h (HyperCook/LeanBroth/EverSimmer) against 72 required — order-of-magnitude non-compliance for every architecture, and the first campaign requirement where the answer was no. Pricing compliance exposes a requirements conflict: 72 h of ingredients at nominal rate masses 12.2 / 7.8 / 9.2 t against the 15 t TOTAL system mass budget (SR-GS-011) that already carries the machinery. SR-GS-021 as written is unsatisfiable alongside SR-GS-011 for any variant; resolution belongs to the requirements owner (relax the hours, raise the budget, or exclude consumables from the system mass — the likely intended reading). Verified-by-test coverage deliberately stays 8 of 28: the dashboard's honesty depends on findings not being dressed up as verifications. Suite: 66 tests, all green.
+
+## ADR-031: Rocket turnaround from existing instrumentation
+
+**Context.** SR-GS-018 caps delivery-rocket loading at 20 minutes. No rocket-level behavior existed, but the transport-loading branch (ADR-028) already logs the loaded-shipment flow at every dock.
+
+**Decision.** Model turnaround as fill time plus handling overhead, measured from the logged loaded-flow cumulative curve: two new estimate parameters (`Rocket_Load_bowls` = 60, `Rocket_Handling_s` = 120) and measurement code only — the campaign's cheapest chunk, riding entirely on ADR-028's instrumentation. [`analysis/runTurnaroundSweep.m`](../analysis/runTurnaroundSweep.m) prices turnaround for shipments of 40-120 bowls from one nominal simulation per variant; a `RocketTurnaround` suite adds three cases with Verify links for HyperCook and EverSimmer and an unlinked regression baseline for LeanBroth asserting turnaround > 1200 s (the finding-retirement convention from ADR-030).
+
+**Status.** Accepted.
+
+**Consequences.** SR-GS-018 verified for HyperCook (808.1 s) and EverSimmer (1086.0 s, 114 s of margin) at the 60-bowl design shipment; test-verified coverage 9 of 28. **LeanBroth misses by 41.5 s** (1241.5 s) — fill time is set by production rate, not dock capacity, so the turnaround ranking is the throughput ranking, and the slowest producer pays at the launch pad too. The verdict is estimate-sensitive (LeanBroth passes at 55-bowl shipments), which is why the published product is the compliant-shipment envelope (~92 / ~57 / ~66 bowls for HC/LB/ES), not just the design-point verdict; `tTurnaround` baselines both. Suite: 71 tests, all green.
