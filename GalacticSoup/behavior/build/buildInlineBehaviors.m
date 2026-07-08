@@ -38,11 +38,9 @@ mdl = 'PhysicalLeanBroth';
 mdlA = systemcomposer.loadModel(mdl);
 set_param(mdl, 'SolverType','Variable-step', 'StopTime','14400');
 
-% fault-time variables (1e9 s = never; Step blocks reject inf)
-mws = get_param(mdl,'ModelWorkspace');
-for v = {'Fault_T_Prep','Fault_T_Kettle1','Fault_T_Kettle2','Fault_T_QC','Fault_T_Pack','Resupply_Cutoff_T'}
-    assignin(mws, v{1}, 1e9);
-end
+% fault/cutoff defaults live in the variant DICTIONARY (ADR-033: Test
+% Manager overrides reach dictionary entries through external harnesses;
+% direct-sim setVariable(...,'Workspace',mdl) still shadows them)
 
 % --- TriPadLandingField: resupply source + outbound pass ---
 p = beh(mdlA, [mdl '/TriPadLandingField']);
@@ -248,11 +246,9 @@ function buildHyperCook()
 mdl = 'PhysicalHyperCook';
 mdlA = systemcomposer.loadModel(mdl);
 set_param(mdl, 'SolverType','Variable-step', 'StopTime','14400');
-mws = get_param(mdl,'ModelWorkspace');
-for v = {'Fault_T_Prep1','Fault_T_Prep2','Fault_T_Cook1','Fault_T_Cook2', ...
-         'Fault_T_Cook3','Fault_T_Cook4','Fault_T_QC','Fault_T_Pack','Resupply_Cutoff_T'}
-    assignin(mws, v{1}, 1e9);
-end
+% fault/cutoff defaults live in the variant DICTIONARY (ADR-033: Test
+% Manager overrides reach dictionary entries through external harnesses;
+% direct-sim setVariable(...,'Workspace',mdl) still shadows them)
 
 p = beh(mdlA, [mdl '/LaunchPadComplex']);
 inEl(p,'loadedShipment','flow_bps');
@@ -441,10 +437,9 @@ function buildEverSimmer()
 mdl = 'PhysicalEverSimmer';
 mdlA = systemcomposer.loadModel(mdl);
 set_param(mdl, 'SolverType','Variable-step', 'StopTime','14400');
-mws = get_param(mdl,'ModelWorkspace');
-for v = {'Fault_T_Cell1','Fault_T_Cell2','Fault_T_Cell3','Resupply_Cutoff_T'}
-    assignin(mws, v{1}, 1e9);
-end
+% fault/cutoff defaults live in the variant DICTIONARY (ADR-033: Test
+% Manager overrides reach dictionary entries through external harnesses;
+% direct-sim setVariable(...,'Workspace',mdl) still shadows them)
 
 p = beh(mdlA, [mdl '/TriplePadPort']);
 inEl(p,'loadedShipment','flow_bps');
