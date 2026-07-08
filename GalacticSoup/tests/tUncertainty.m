@@ -1,6 +1,6 @@
 classdef (TestTags = {'analysis'}) tUncertainty < sltest.TestCase
     % Parameter-uncertainty study invariants (ADR-025). The 600-simulation
-    % campaign itself is too heavy for the suite; these tests baseline its
+    % study itself is too heavy for the suite; these tests baseline its
     % published conclusions and guard the reproducibility contract between
     % the spec, the saved simulation batches, and the post-processing.
 
@@ -19,7 +19,7 @@ classdef (TestTags = {'analysis'}) tUncertainty < sltest.TestCase
         end
 
         function savedSimsMatchSpec(tc)
-            % guards editing uncertaintySpec without re-running the campaign:
+            % guards editing uncertaintySpec without re-running the simulations:
             % the parameter values stored with each simulation batch must be
             % exactly what today's spec generates
             spec = uncertaintySpec();
@@ -36,7 +36,7 @@ classdef (TestTags = {'analysis'}) tUncertainty < sltest.TestCase
         end
 
         function baselinedConclusions(tc)
-            % regression baselines for the published campaign results
+            % regression baselines for the published study results
             proj = currentProject;
             S = load(fullfile(char(proj.RootFolder), 'analysis', 'uncertaintyResults.mat'));
             unc = S.unc;

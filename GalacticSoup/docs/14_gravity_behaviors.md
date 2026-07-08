@@ -6,7 +6,7 @@ Artifacts: gravity physics in [`../behavior/build/buildInlineBehaviors.m`](../be
 
 ## 1. Where the physics lives
 
-No behavioral library model changed. The gravity effects are **instance-parameter expressions** on the existing `Beh*` model references, evaluated in the parent architecture's resolution context — which is exactly what makes per-run overrides work: `Gravity_g` sits in the shared dictionary (default 1), and `setVariable('Gravity_g', g, 'Workspace', model)` shadows it per simulation, the same mechanism the fault injection and the uncertainty campaign use.
+No behavioral library model changed. The gravity effects are **instance-parameter expressions** on the existing `Beh*` model references, evaluated in the parent architecture's resolution context — which is exactly what makes per-run overrides work: `Gravity_g` sits in the shared dictionary (default 1), and `setVariable('Gravity_g', g, 'Workspace', model)` shadows it per simulation, the same mechanism the fault injection and the uncertainty study use.
 
 | Effect | Expression | Physics |
 |---|---|---|

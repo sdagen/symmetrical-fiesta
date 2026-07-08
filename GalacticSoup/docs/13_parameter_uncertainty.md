@@ -2,7 +2,7 @@
 
 Branch exploration: giving the trade study's *performance* claims the same sensitivity treatment its *preference* claims already had. The weights-only Monte Carlo (ADR-013, [`05_trade_study_methodology.md`](05_trade_study_methodology.md)) answers "does the winner depend on whose opinion you ask?" — it re-scores fixed metrics under 5,000 random stakeholder weightings, running zero simulations. This study answers the question that sweep deliberately leaves open: "does the verdict depend on the parameters that are engineering estimates rather than measurements?" — by actually simulating the architecture models under parameter draws.
 
-Artifacts: [`../analysis/uncertaintySpec.m`](../analysis/uncertaintySpec.m) (campaign definition), [`../analysis/runUncertaintySims.m`](../analysis/runUncertaintySims.m) (per-variant `parsim` batches), [`../analysis/runUncertaintyStudy.m`](../analysis/runUncertaintyStudy.m) (post-processing, figures), [`../tests/tUncertainty.m`](../tests/tUncertainty.m) (baselines + reproducibility contract). Decision: ADR-025 in [`07_decision_log.md`](07_decision_log.md).
+Artifacts: [`../analysis/uncertaintySpec.m`](../analysis/uncertaintySpec.m) (study definition), [`../analysis/runUncertaintySims.m`](../analysis/runUncertaintySims.m) (per-variant `parsim` batches), [`../analysis/runUncertaintyStudy.m`](../analysis/runUncertaintyStudy.m) (post-processing, figures), [`../tests/tUncertainty.m`](../tests/tUncertainty.m) (baselines + reproducibility contract). Decision: ADR-025 in [`07_decision_log.md`](07_decision_log.md).
 
 ## 1. What is uncertain
 
@@ -16,7 +16,7 @@ The behavioral docs ([`10_behavioral_trade_update.md`](10_behavioral_trade_updat
 
 Sampling is one 200-draw Latin hypercube (`lhsdesign`, seeded) shared by all three variants — common random numbers, so each draw is one "world" all variants experience together and cross-variant comparisons are variance-reduced.
 
-## 2. How the campaign runs
+## 2. How the study runs
 
 `runUncertaintySims(variant)` builds 200 `Simulink.SimulationInput` objects, each overriding the three parameters *in the model workspace* — which shadows the attached data dictionary entry of the same name, so the dictionaries on disk are never touched (the same mechanism the fault injection uses for `Fault_T_*`). The batch runs through `parsim`; 600 simulations total, roughly 35 minutes on a 4-worker pool. Steady-state throughput and energy per bowl are harvested exactly as `runBehavioralAnalysis` does, and each variant's batch persists to `uncertaintySims_<Variant>.mat`.
 
@@ -30,13 +30,13 @@ Sampling is one 200-draw Latin hypercube (`lhsdesign`, seeded) shared by all thr
 | LeanBroth | **4%** | 193.1 | 185.5–199.7 | 0.6% | excluded |
 | EverSimmer | 100% | 228.6 | 222.6–233.2 | **97.8%** | 98.4% |
 
-The headline: **LeanBroth's borderline compliance failure now has a probability instead of a point verdict.** The deterministic run said 196.8 bph against a floor of 200 (ADR-018); the campaign says that in 96% of parameter worlds it misses the floor, and even its 95th-percentile world (199.7 bph) falls just short. "LeanBroth fails SR-GS-002" upgrades from "at nominal parameter estimates" to "with 96% confidence over the stated parameter uncertainty" — a much stronger statement, and a fairer one, since it also quantifies the 4% of worlds where a better-than-feared QC bench would clear it.
+The headline: **LeanBroth's borderline compliance failure now has a probability instead of a point verdict.** The deterministic run said 196.8 bph against a floor of 200 (ADR-018); the study says that in 96% of parameter worlds it misses the floor, and even its 95th-percentile world (199.7 bph) falls just short. "LeanBroth fails SR-GS-002" upgrades from "at nominal parameter estimates" to "with 96% confidence over the stated parameter uncertainty" — a much stronger statement, and a fairer one, since it also quantifies the 4% of worlds where a better-than-feared QC bench would clear it.
 
 Second finding: **the trade verdict is robust to both kinds of uncertainty.** EverSimmer wins 97.8% of scored worlds when parameters and priorities vary together, versus 98.4% under priority variation alone. HyperCook's and EverSimmer's compliance never wavers across any draw. Nobody's decision was hiding in the error bars.
 
 ## 4. Reproducibility contract
 
-Three artifacts must stay in agreement: the spec (distributions + seeds), the saved simulation batches, and the published results. `tUncertainty` enforces all three legs: the spec regenerates its own draws bit-identically; the parameter values stored inside each simulation batch equal what today's spec generates (so editing `uncertaintySpec.m` without re-running the campaign fails the suite); and rerunning the seeded post-processing over the saved batches reproduces the published compliance probabilities and win shares exactly. The campaign itself (35 minutes, 600 simulations) is deliberately outside the test suite and outside `runFullAnalysis` — it reruns only when the spec or the models change, and the spec-vs-batch test is what tells you that rerun is due.
+Three artifacts must stay in agreement: the spec (distributions + seeds), the saved simulation batches, and the published results. `tUncertainty` enforces all three legs: the spec regenerates its own draws bit-identically; the parameter values stored inside each simulation batch equal what today's spec generates (so editing `uncertaintySpec.m` without re-running the study fails the suite); and rerunning the seeded post-processing over the saved batches reproduces the published compliance probabilities and win shares exactly. The simulation study itself (35 minutes, 600 simulations) is deliberately outside the test suite and outside `runFullAnalysis` — it reruns only when the spec or the models change, and the spec-vs-batch test is what tells you that rerun is due.
 
 ## 5. Gotchas
 

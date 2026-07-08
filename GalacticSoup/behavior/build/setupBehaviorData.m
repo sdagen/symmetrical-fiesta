@@ -69,7 +69,7 @@ common = { ...
  'QC_DetectSensitivity', 0.995; ... % QC contamination detection sensitivity
  ...                                % (requirement floor is 0.99; 0.995 leaves margin)
  'Recipe_Count',   8;      ... % distinct recipes in the runtime rotation (SR-GS-001)
- 'Recipe_Block_s', 1800;   ... % campaign block length: 8 recipes per 4 h run
+ 'Recipe_Block_s', 1800;   ... % rotation block length: 8 recipes per 4 h production run
  'Recipe_Flush_s', 0;      ... % continuous-line changeover flush; 0 nominal
  ...                           % (neutral), overridden per run for ADR-029 sweeps
  'Rocket_Load_bowls', 60;  ... % shipment size per delivery rocket (estimate,

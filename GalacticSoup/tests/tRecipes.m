@@ -1,8 +1,8 @@
 classdef (TestTags = {'analysis'}) tRecipes < sltest.TestCase
-    % Recipe-campaign conclusions (ADR-029): regression baselines for the
+    % Recipe-rotation conclusions (ADR-029): regression baselines for the
     % SR-GS-001 story. The flush-pricing sweep lives in
     % analysis/runRecipeSweep; these tests baseline what it published:
-    % every campaign produces all 8 recipes, the continuous-line flush
+    % every production run produces all 8 recipes, the continuous-line flush
     % cost is linear and never threatens compliance across the swept
     % range, and the neutral default is exactly neutral.
 
@@ -13,7 +13,7 @@ classdef (TestTags = {'analysis'}) tRecipes < sltest.TestCase
             r = S.rec;
             tc.verifyEqual(r.flush_s, [0 60 120 300]);
             tc.verifyEqual(r.hc_recipes, 8*ones(1,4), ...
-                'a campaign failed to produce all 8 recipes');
+                'a production run failed to produce all 8 recipes');
             tc.verifyEqual(r.hc_thr_bph, [308.4 298.7 289.0 259.0], 'AbsTol', 3, ...
                 'HyperCook flush pricing moved off its baselines');
             % zero flush is exactly the pre-recipe baseline (neutrality)

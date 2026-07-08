@@ -253,12 +253,12 @@ for i = 1:size(trn,1)
         trn{i,3});
 end
 
-% --- RecipeCampaign suite: SR-GS-001 runtime recipe rotation ---
+% --- RecipeRotation suite: SR-GS-001 runtime recipe rotation ---
 % >= 8 distinct recipes counted from the logged activeRecipe signal.
 % HyperCook runs with a realistic 120 s changeover flush (continuous
 % lines pay for switching); EverSimmer's batch cycle hides changeover
 % in its clean phase and needs no override.
-recSuite = createTestSuite(tf, 'RecipeCampaign');
+recSuite = createTestSuite(tf, 'RecipeRotation');
 for stray = getTestCases(recSuite)
     remove(stray);
 end
@@ -268,8 +268,8 @@ recFrag = [ ...
     'test.verifyGreaterThanOrEqual(numel(unique(round(r.Data))), 8, ''SR-GS-001 recipe count'');\n'];
 % {name, model, flush override (or []), steady bph, links}
 rcp = { ...
- 'HyperCook recipe campaign',  'PhysicalHyperCook',  120, 289.0, {'SR-GS-001'}; ...
- 'EverSimmer recipe campaign', 'PhysicalEverSimmer', [],  231.9, {'SR-GS-001'}};
+ 'HyperCook recipe rotation',  'PhysicalHyperCook',  120, 289.0, {'SR-GS-001'}; ...
+ 'EverSimmer recipe rotation', 'PhysicalEverSimmer', [],  231.9, {'SR-GS-001'}};
 for i = 1:size(rcp,1)
     tc = createTestCase(recSuite, 'simulation', rcp{i,1});
     setProperty(tc, 'Model', rcp{i,2});

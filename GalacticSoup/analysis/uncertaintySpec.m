@@ -1,10 +1,10 @@
 function spec = uncertaintySpec()
-%UNCERTAINTYSPEC Parameter-uncertainty campaign definition (ADR-025).
+%UNCERTAINTYSPEC Parameter-uncertainty study definition (ADR-025).
 %   Single source of truth for the Monte Carlo over PHYSICAL parameters:
 %   which model-workspace variables are uncertain, their distributions,
-%   the draw count, and the seeds. Both the simulation campaign
+%   the draw count, and the seeds. Both the simulation study
 %   (runUncertaintySims) and the reproducibility test regenerate draws
-%   from this spec, so there is exactly one place the campaign is defined.
+%   from this spec, so there is exactly one place the study is defined.
 %
 %   The uncertain parameters are the QC-station estimates the behavioral
 %   docs flag as engineering judgment rather than measurement: reject

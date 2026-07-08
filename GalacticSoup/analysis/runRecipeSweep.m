@@ -48,5 +48,5 @@ writetable(table(FLUSH', thr', nRec', 'VariableNames', ...
     fullfile(anaDir, 'recipeSweep.csv'));
 fprintf('Recipe flush sweep (HyperCook): ');
 fprintf('%g s -> %.1f bph; ', [FLUSH; thr]);
-fprintf('\nrecipes per campaign: %s\n', mat2str(nRec));
+fprintf('\nrecipes per production run: %s\n', mat2str(nRec));
 end
