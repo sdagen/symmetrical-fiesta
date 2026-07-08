@@ -84,7 +84,7 @@ if fullRun
     fprintf('  checked by the formal gate (Refine links):     %d/%d\n', nGate, numel(reqs));
     fprintf('  verified by executed tests (Verify links):     %d passed, %d not passed (%s)\n', ...
         nVerPass, nVerFail, strjoin(verIds, ', '));
-    for id = {'SR-GS-002','SR-GS-006','SR-GS-007','SR-GS-008','SR-GS-015','SR-GS-025','SR-GS-026'}
+    for id = {'SR-GS-001','SR-GS-002','SR-GS-006','SR-GS-007','SR-GS-008','SR-GS-015','SR-GS-025','SR-GS-026'}
         st = getVerificationStatus(find(srSet, 'Id', id{1}));
         assert(st.failed == 0 && st.unexecuted == 0, '%s not verified', id{1});
     end

@@ -295,3 +295,13 @@ Architecture Decision Record (ADR) style log for the Intergalactic Vegan Soup Fa
 **Status.** Accepted.
 
 **Consequences.** SR-GS-006 verified-passed for all three variants; test-verified coverage 7 of 28. Nominal latency equals transit exactly (30/120/60 s, empty queues). The sweep's finding is a margin story: everyone holds 600 s at 80% capacity and loses it by 60% (unbounded backlog once pickup < production), but LeanBroth stands closest to the cliff — at 80% its pickup margin is 1.6% and latency has already climbed to 196.6 s. `tTransport` baselines both the cliff pattern and LeanBroth's thinnest-margin status. Suite: 57 tests, all green.
+
+## ADR-029: Runtime recipe rotation with architecture-priced changeover
+
+**Context.** SR-GS-001 requires at least 8 distinct recipes selectable at runtime; `PreparedBatch.recipeId` had been a stubbed constant 0 since the interfaces were defined.
+
+**Decision.** All generator-level ([`buildInlineBehaviors.m`](../behavior/build/buildInlineBehaviors.m)), no library changes: a `recipeSchedule` helper stamps `activeRecipe = 1 + mod(floor(t/Recipe_Block_s), Recipe_Count)` into every prep unit's output (logged once per variant), and a `flushGate` on HyperCook's four continuous cook lines prices changeover — the line drops for `Recipe_Flush_s` after each switch. Batch vats get no flush by design: recipe changeover between batches rides the clean phase the cycle already pays for. Defaults are neutral (`Recipe_Flush_s = 0`); `Recipe_Count = 8`, `Recipe_Block_s = 1800` give 8 recipes per 4 h campaign. [`analysis/runRecipeSweep.m`](../analysis/runRecipeSweep.m) prices the flush at [0 60 120 300] s; a `RecipeCampaign` suite adds HyperCook (120 s flush) and EverSimmer cases with Verify links to SR-GS-001; `tRecipes` baselines the sweep and the linearity of the pricing.
+
+**Status.** Accepted.
+
+**Consequences.** SR-GS-001 verified-passed; test-verified coverage 8 of 28. Every campaign produces all 8 recipes; HyperCook's flush costs a linear ~9.9 bph per flush-minute (289.0 bph at a realistic 120 s, 259.0 at a pessimistic 300 s — never near the floor). The architectural observation is the inverse of the gravity story: recipe flexibility is where batch cooking finally wins one. Continuous-line throughput pays real downtime for every changeover, while the batch architectures absorb switching into cycle structure they already have — LeanBroth and EverSimmer's flush cost is identically zero by construction. A third occurrence of the log-after-wire ordering trap (vat temp, QC contamination, now recipe logging) turned it into a named generator convention: the `logLine` helper, called only after `lineTo`. Suite: 61 tests, all green.

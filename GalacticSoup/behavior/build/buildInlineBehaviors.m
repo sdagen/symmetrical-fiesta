@@ -95,7 +95,10 @@ en = enableOf(p, gate);
 m = addRef(p,'Prep','BehPrepUnit', ...
     {'PrepRate_bph','LB_PrepRate_bph*max(0.5, 1 - 0.05*max(0, Gravity_g - 2))'});
 line(p, sm, [m '/1']); lineTo(p, [en '/1'], [m '/2']);
-outs = makeOuts(p,'preppedBatch','PreparedBatch', {'batchId','0';'recipeId','0'});
+outs = makeOuts(p,'preppedBatch','PreparedBatch', {'batchId','0'});
+rs = recipeSchedule(p);
+lineTo(p, [rs '/1'], outs('recipeId'));
+logLine(p, rs, 'activeRecipe');
 lineTo(p, [m '/1'], outs('flow_bps'));
 kg = addB(p,'ToKgPerHr','simulink/Math Operations/Gain',{'Gain','0.55*3600'});
 lineTo(p, [m '/1'], [kg '/1']); lineTo(p, [kg '/1'], outs('mass_kg'));
@@ -291,7 +294,10 @@ for s = 1:2
     m = addRef(p,'Prep','BehPrepUnit', ...
         {'PrepRate_bph','HC_PrepRate_bph*max(0.5, 1 - 0.015*max(0, Gravity_g - 4))'});
     line(p, ['in_' hcPreps{s,2}], [m '/1']); lineTo(p, [en '/1'], [m '/2']);
-    outs = makeOuts(p, hcPreps{s,3}, 'PreparedBatch', {'batchId','0';'recipeId','0'});
+    outs = makeOuts(p, hcPreps{s,3}, 'PreparedBatch', {'batchId','0'});
+    rs = recipeSchedule(p);
+    lineTo(p, [rs '/1'], outs('recipeId'));
+    if s == 1, logLine(p, rs, 'activeRecipe'); end
     lineTo(p, [m '/1'], outs('flow_bps'));
     kg = addB(p,'ToKgPerHr','simulink/Math Operations/Gain',{'Gain','0.55*3600'});
     lineTo(p, [m '/1'], [kg '/1']); lineTo(p, [kg '/1'], outs('mass_kg'));
@@ -314,7 +320,10 @@ for s = 1:4
     m = addRef(p,'Cook','BehCookLine', {'CookRate_bph','HC_CookRate_bph'; ...
         'PowerFull_kW','HC_CookPowerFull_kW'; 'PowerIdle_kW','HC_CookPowerIdle_kW'; ...
         'CookTau_s','HC_CookTau_s'});
-    line(p, g, [m '/1']); lineTo(p, [en '/1'], [m '/2']);
+    % recipe changeover flush (SR-GS-001): the continuous line pays
+    % Recipe_Flush_s of downtime per switch; batch vats don't (clean phase)
+    fg = flushGate(p, en);
+    line(p, g, [m '/1']); lineTo(p, [fg '/1'], [m '/2']);
     outs = makeOuts(p, hcCooks{s,3}, 'SoupStream', {'batchId','0';'temp_C','90';'contamination_ppm','0'});
     lineTo(p, [m '/1'], outs('flow_bps'));
     lit = addB(p,'ToLitres','simulink/Math Operations/Gain',{'Gain','1800'});
@@ -467,7 +476,10 @@ for cellN = 1:3
     m = addRef(p,'Prep','BehPrepUnit', ...
         {'PrepRate_bph','ES_PrepRate_bph*max(0.5, 1 - 0.015*max(0, Gravity_g - 4))'});
     line(p, g, [m '/1']); lineTo(p, [en '/1'], [m '/2']);
-    outs = makeOuts(p,'preppedBatch','PreparedBatch', {'batchId','0';'recipeId','0'});
+    outs = makeOuts(p,'preppedBatch','PreparedBatch', {'batchId','0'});
+    rs = recipeSchedule(p);
+    lineTo(p, [rs '/1'], outs('recipeId'));
+    if cellN == 1, logLine(p, rs, 'activeRecipe'); end
     lineTo(p, [m '/1'], outs('flow_bps'));
     kg = addB(p,'ToKgPerHr','simulink/Math Operations/Gain',{'Gain','0.55*3600'});
     lineTo(p, [m '/1'], [kg '/1']); lineTo(p, [kg '/1'], outs('mass_kg'));
@@ -767,6 +779,58 @@ add_block('simulink/Math Operations/Product', [p '/' en]);
 sp = blkOf(p, 'directive');
 add_line(p, [sp '/1'], [en '/1']);
 add_line(p, [gate '/1'], [en '/2']);
+end
+
+function rs = recipeSchedule(p)
+% runtime recipe selection (SR-GS-001, ADR-029): activeRecipe cycles
+% 1..Recipe_Count, switching every Recipe_Block_s. Stamped into
+% PreparedBatch.recipeId by the prep units; logged once per variant so
+% criteria can count distinct recipes produced.
+ck = addB(p,'RecipeClock','simulink/Sources/Clock',{});
+bg = addB(p,'BlockIndex','simulink/Math Operations/Gain',{'Gain','1/Recipe_Block_s'});
+fl = addB(p,'BlockFloor','simulink/Math Operations/Rounding Function',{'Operator','floor'});
+md = addB(p,'RecipeMod','simulink/Math Operations/Math Function',{'Operator','mod'});
+nc = addB(p,'RecipeCount','simulink/Sources/Constant',{'Value','Recipe_Count'});
+bi = addB(p,'RecipeBias','simulink/Math Operations/Bias',{'Bias','1'});
+add_line(p, [ck '/1'], [bg '/1']);
+add_line(p, [bg '/1'], [fl '/1']);
+add_line(p, [fl '/1'], [md '/1']);
+add_line(p, [nc '/1'], [md '/2']);
+add_line(p, [md '/1'], [bi '/1']);
+rs = bi;
+end
+
+function logLine(p, blk, sigName)
+% name + log a block's first output line; call AFTER the line is wired
+ph = get_param([p '/' blk], 'PortHandles');
+set_param(get_param(ph.Outport(1),'Line'), 'Name', sigName);
+set_param(ph.Outport(1), 'DataLogging', 'on');
+end
+
+function fg = flushGate(p, enBlk)
+% recipe-changeover flush for CONTINUOUS lines (SR-GS-001, ADR-029): the
+% line goes down for Recipe_Flush_s after each recipe switch. Batch vats
+% need no flush - their clean phase already separates recipes. Neutral at
+% the Recipe_Flush_s = 0 default (pulse never true).
+ck = addB(p,'FlushClock','simulink/Sources/Clock',{});
+md = addB(p,'FlushPhase','simulink/Math Operations/Math Function',{'Operator','mod'});
+bk = addB(p,'FlushBlockLen','simulink/Sources/Constant',{'Value','Recipe_Block_s'});
+fw = addB(p,'FlushWindow','simulink/Sources/Constant',{'Value','Recipe_Flush_s'});
+ro = addB(p,'InFlush','simulink/Logic and Bit Operations/Relational Operator',{'Operator','<'});
+dt = addB(p,'FlushDbl','simulink/Signal Attributes/Data Type Conversion',{'OutDataTypeStr','double'});
+iv = addB(p,'FlushInv','simulink/Math Operations/Add',{'Inputs','+-'});
+on = addB(p,'FlushOne','simulink/Sources/Constant',{'Value','1'});
+pr = addB(p,'FlushGateProd','simulink/Math Operations/Product',{});
+add_line(p, [ck '/1'], [md '/1']);
+add_line(p, [bk '/1'], [md '/2']);
+add_line(p, [md '/1'], [ro '/1']);
+add_line(p, [fw '/1'], [ro '/2']);
+add_line(p, [ro '/1'], [dt '/1']);
+add_line(p, [on '/1'], [iv '/1']);
+add_line(p, [dt '/1'], [iv '/2']);
+add_line(p, [enBlk '/1'], [pr '/1']);
+add_line(p, [iv '/1'], [pr '/2']);
+fg = pr;
 end
 
 function dockPath(p, srcBlk, dstBlk, rateExpr, latExpr)

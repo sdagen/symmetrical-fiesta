@@ -34,7 +34,7 @@ slreq.clear();
 srSet = slreq.load(fullfile(char(proj.RootFolder), 'requirements', 'SystemRequirements.slreqx'));
 
 % purge stale Verify links from earlier builds of this artifact
-for id = {'SR-GS-002','SR-GS-026','SR-GS-008','SR-GS-015','SR-GS-025','SR-GS-007','SR-GS-006'}
+for id = {'SR-GS-002','SR-GS-026','SR-GS-008','SR-GS-015','SR-GS-025','SR-GS-007','SR-GS-006','SR-GS-001'}
     sr = find(srSet, 'Id', id{1});
     for L = inLinks(sr)
         try
@@ -253,10 +253,46 @@ for i = 1:size(trn,1)
         trn{i,3});
 end
 
+% --- RecipeCampaign suite: SR-GS-001 runtime recipe rotation ---
+% >= 8 distinct recipes counted from the logged activeRecipe signal.
+% HyperCook runs with a realistic 120 s changeover flush (continuous
+% lines pay for switching); EverSimmer's batch cycle hides changeover
+% in its clean phase and needs no override.
+recSuite = createTestSuite(tf, 'RecipeCampaign');
+for stray = getTestCases(recSuite)
+    remove(stray);
+end
+recFrag = [ ...
+    'lg = test.sltest_simout.get(''logsout'');\n' ...
+    'r = lg.get(''activeRecipe'').Values;\n' ...
+    'test.verifyGreaterThanOrEqual(numel(unique(round(r.Data))), 8, ''SR-GS-001 recipe count'');\n'];
+% {name, model, flush override (or []), steady bph, links}
+rcp = { ...
+ 'HyperCook recipe campaign',  'PhysicalHyperCook',  120, 289.0, {'SR-GS-001'}; ...
+ 'EverSimmer recipe campaign', 'PhysicalEverSimmer', [],  231.9, {'SR-GS-001'}};
+for i = 1:size(rcp,1)
+    tc = createTestCase(recSuite, 'simulation', rcp{i,1});
+    setProperty(tc, 'Model', rcp{i,2});
+    setProperty(tc, 'OverrideStopTime', true);
+    setProperty(tc, 'StopTime', 14400);
+    if ~isempty(rcp{i,3})
+        ps = addParameterSet(tc, 'Name', 'changeover');
+        addParameterOverride(ps, 'Recipe_Flush_s', rcp{i,3});
+    end
+    cc = getCustomCriteria(tc);
+    cc.Enabled = true;
+    cc.Callback = sprintf([harvest ...
+        'sel = flow.Time > 7200;\n' ...
+        'bph = trapz(flow.Time(sel), flow.Data(sel))/(flow.Time(end)-7200)*3600;\n' ...
+        floorFrag ...
+        'test.verifyEqual(bph, %g, ''AbsTol'', 3, ''regression band'');\n' ...
+        recFrag], rcp{i,4});
+end
+
 % save FIRST so cases carry persistent IDs, then link (links made against
 % unsaved cases capture provisional IDs and never match executed results)
 saveToFile(tf);
-linkSpec = [nom(:,[1 5]); flt(:,[1 6]); grv(:,[1 6]); ctm(:,[1 4]); trn(:,[1 4])];
+linkSpec = [nom(:,[1 5]); flt(:,[1 6]); grv(:,[1 6]); ctm(:,[1 4]); trn(:,[1 4]); rcp(:,[1 5])];
 nLinks = 0;
 for s = getTestSuites(tf)
     for tc = getTestCases(s)
@@ -274,5 +310,5 @@ saveToFile(tf);
 slreq.saveAll();
 pf = {proj.Files.Path};
 if ~any(strcmpi(pf, tfPath)), addFile(proj, tfPath); end
-fprintf('%s built: 14 cases, %d Verify links\n', tfPath, nLinks);
+fprintf('%s built: 16 cases, %d Verify links\n', tfPath, nLinks);
 end
