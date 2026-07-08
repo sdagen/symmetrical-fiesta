@@ -1,4 +1,4 @@
-Variant,Endurance_h,StorageCap_bowls,Required_bowls,RequiredMass_kg
-HyperCook,6.40722222222222,2000,22204.8,12212.64
-LeanBroth,4.66055555555556,800,14169.6,7793.28
-EverSimmer,5.44361111111111,1200,16696.8,9183.24
+Variant,StorageCap_bowls,ProjectedEndurance_h,StillProducing
+HyperCook,22300,72.3098255322278,1
+LeanBroth,14300,72.6231648639361,1
+EverSimmer,16800,72.7572780426799,1

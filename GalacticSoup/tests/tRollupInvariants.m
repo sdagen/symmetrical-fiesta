@@ -27,10 +27,14 @@ classdef (TestTags = {'analysis'}) tRollupInvariants < sltest.TestCase
             % NOTE: LeanBroth goldens were once recorded as 6170/880/200 from
             % a session dump taken while the kettles' stereotype values were
             % missing (the ADR-017 linkToModel incident) - this test caught it.
+            % ADR-032 rebaseline: 72 h ingredient stores added rack hardware
+            % (0.025 kg / 0.0010 m3 / 0.004 kCr per added bowl of capacity)
+            % to every storage component. Pre-resolution totals were
+            % 14320/498/1980/397, 7570/239/1070/240, 11120/363/1905/297.
             golden = { ... % Variant, Mass_kg, Power_kW, Cost_kCredits, Volume_m3
-                'HyperCook',  14320, 498, 1980, 397; ...
-                'LeanBroth',   7570, 239, 1070, 240; ...
-                'EverSimmer', 11120, 363, 1905, 297};
+                'HyperCook',  14827.5, 498, 2061.2, 417.3; ...
+                'LeanBroth',   7907.5, 239, 1124.0, 253.5; ...
+                'EverSimmer', 11510.0, 363, 1967.4, 312.6};
             for i = 1:size(golden,1)
                 r = testCase.R(strcmp({testCase.R.Variant}, golden{i,1}));
                 testCase.assertNotEmpty(r, golden{i,1});

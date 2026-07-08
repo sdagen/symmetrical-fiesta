@@ -34,7 +34,7 @@ slreq.clear();
 srSet = slreq.load(fullfile(char(proj.RootFolder), 'requirements', 'SystemRequirements.slreqx'));
 
 % purge stale Verify links from earlier builds of this artifact
-for id = {'SR-GS-002','SR-GS-026','SR-GS-008','SR-GS-015','SR-GS-025','SR-GS-007','SR-GS-006','SR-GS-001','SR-GS-018'}
+for id = {'SR-GS-002','SR-GS-026','SR-GS-008','SR-GS-015','SR-GS-025','SR-GS-007','SR-GS-006','SR-GS-001','SR-GS-018','SR-GS-021'}
     sr = find(srSet, 'Id', id{1});
     for L = inLinks(sr)
         try
@@ -289,23 +289,23 @@ for i = 1:size(rcp,1)
         recFrag], rcp{i,4});
 end
 
-% --- StorageEndurance suite: SR-GS-021 measured non-compliance ---
-% Resupply cut at t = 3600 s with stores full; endurance = last
-% productive instant minus cutoff. ALL variants fail the 72 h
-% requirement by an order of magnitude (ADR-030: compliant storage
-% masses 7.8-12.2 t against the 15 t system budget - a requirements
-% conflict with SR-GS-011). No Verify links; these are regression
-% baselines of the finding, and the < 72 h assertion means any future
-% redesign that fixes it must consciously retire these cases.
+% --- StorageEndurance suite: SR-GS-021 verification (post-ADR-032) ---
+% Stores sized for 72 h at each variant's nominal rate; consumables
+% excluded from the SR-GS-011 mass budget by requirements decision.
+% Resupply cut at t = 3600 s with stores full: production must not
+% starve inside the 12 h window and projected endurance (capacity /
+% measured unsupplied rate) must reach 72 h. The finding-era baseline
+% cases (6.41/4.66/5.44 h with their < 72 h assertions) were retired
+% consciously by this rework, exactly as their design intended.
 endSuite = createTestSuite(tf, 'StorageEndurance');
 for stray = getTestCases(endSuite)
     remove(stray);
 end
-% {name, model, init var, cap, endurance h}
+% {name, model, init var, cap, projected h, links}
 edu = { ...
- 'HyperCook storage endurance - regression baseline',  'PhysicalHyperCook',  'HC_StorageInit_bowls', 2000, 6.41; ...
- 'LeanBroth storage endurance - regression baseline',  'PhysicalLeanBroth',  'LB_StorageInit_bowls', 800,  4.66; ...
- 'EverSimmer storage endurance - regression baseline', 'PhysicalEverSimmer', 'ES_StorageInit_bowls', 1200, 5.44};
+ 'HyperCook storage endurance',  'PhysicalHyperCook',  'HC_StorageInit_bowls', 22300, 72.3, {'SR-GS-021'}; ...
+ 'LeanBroth storage endurance',  'PhysicalLeanBroth',  'LB_StorageInit_bowls', 14300, 72.6, {'SR-GS-021'}; ...
+ 'EverSimmer storage endurance', 'PhysicalEverSimmer', 'ES_StorageInit_bowls', 16800, 72.8, {'SR-GS-021'}};
 for i = 1:size(edu,1)
     tc = createTestCase(endSuite, 'simulation', edu{i,1});
     setProperty(tc, 'Model', edu{i,2});
@@ -318,10 +318,13 @@ for i = 1:size(edu,1)
     cc.Enabled = true;
     cc.Callback = sprintf([harvest ...
         'lastIdx = find(flow.Data*3600 > 20, 1, ''last'');\n' ...
-        'endur_h = (flow.Time(lastIdx) - 3600)/3600;\n' ...
-        'test.verifyEqual(endur_h, %g, ''AbsTol'', 0.3, ''endurance regression band'');\n' ...
-        'test.verifyLessThan(endur_h, 72, ''SR-GS-021 finding: retire this case if fixed'');\n'], ...
-        edu{i,5});
+        'test.verifyGreaterThan(flow.Time(lastIdx), 46800 - 2400, ''no starvation in window'');\n' ...
+        'post = flow.Time > 3600;\n' ...
+        'rate = trapz(flow.Time(post), flow.Data(post))/(46800-3600)*3600;\n' ...
+        'proj_h = %g / rate;\n' ...
+        'test.verifyGreaterThanOrEqual(proj_h, 72, ''SR-GS-021 endurance floor'');\n' ...
+        'test.verifyEqual(proj_h, %g, ''AbsTol'', 0.5, ''endurance regression band'');\n'], ...
+        edu{i,4}, edu{i,5});
 end
 
 % --- RocketTurnaround suite: SR-GS-018 (fill + handling <= 1200 s) ---
@@ -370,7 +373,7 @@ end
 % save FIRST so cases carry persistent IDs, then link (links made against
 % unsaved cases capture provisional IDs and never match executed results)
 saveToFile(tf);
-linkSpec = [nom(:,[1 5]); flt(:,[1 6]); grv(:,[1 6]); ctm(:,[1 4]); trn(:,[1 4]); rcp(:,[1 5]); rkt(:,[1 5])];
+linkSpec = [nom(:,[1 5]); flt(:,[1 6]); grv(:,[1 6]); ctm(:,[1 4]); trn(:,[1 4]); rcp(:,[1 5]); rkt(:,[1 5]); edu(:,[1 6])];
 nLinks = 0;
 for s = getTestSuites(tf)
     for tc = getTestCases(s)

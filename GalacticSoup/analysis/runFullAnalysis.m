@@ -27,9 +27,13 @@ if ~isempty(nonCompliant)
         strjoin(nonCompliant, ', '));
 end
 compliant = gate.Properties.RowNames(gate.AllGatesPass)';
-assert(numel(compliant) >= 2, ...
-    'Fewer than two compliant variants (%s): no trade space left to study.', ...
-    strjoin(compliant, ', '));
-
+assert(~isempty(compliant), 'No compliant variants: the trade space is empty.');
+if numel(compliant) == 1
+    % ADR-032: the compliant set collapsed to one - selection is FORCED,
+    % not scored. The degenerate trade run documents the survivor
+    % (winShare 1) so downstream consumers keep working.
+    fprintf(['FORCED SELECTION: %s is the only gate-compliant variant; ' ...
+        'the trade study is a formality.\n'], compliant{1});
+end
 trade = runTradeStudy(compliant);
 end

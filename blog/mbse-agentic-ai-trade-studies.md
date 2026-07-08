@@ -36,7 +36,7 @@ The production cell is my favorite part: a composite component with a miniature 
 
 ![Inside an EverSimmer production cell](images/EverSimmer_ProductionCell.png)
 
-One design decision worth pausing on: these are three separate architecture models, not variant components in one model. The variants differ in topology, hierarchy depth, and component count, and each needs its own allocation set and roll-up. Three models sharing one interface dictionary and one stereotype profile turned out much cleaner, and that reasoning went into an ADR-style decision log (thirty-one entries by the end of this post), the single most useful artifact for picking work back up weeks later.
+One design decision worth pausing on: these are three separate architecture models, not variant components in one model. The variants differ in topology, hierarchy depth, and component count, and each needs its own allocation set and roll-up. Three models sharing one interface dictionary and one stereotype profile turned out much cleaner, and that reasoning went into an ADR-style decision log (thirty-two entries by the end of this post), the single most useful artifact for picking work back up weeks later.
 
 ## Making the variants measurable
 
@@ -90,9 +90,9 @@ The result turns a point verdict into a probability: LeanBroth misses the 200 bo
 
 ## Testing the evidence, not just the models
 
-By now the project was full of claims (golden totals, an expected gate verdict, a deterministic Monte Carlo result) that lived as assertions inside the very scripts that produced them. So they became a test suite: 71 tests in four tiers, from component unit tests up through full architecture simulations, with the expected values recorded as regression baselines so that drift must be a conscious edit, never silence. The suite earned its keep on its first run, when the golden-totals test caught stale LeanBroth numbers that had already leaked into a documentation table. It didn't catch the models being wrong; it caught *us* being wrong about the models.
+By now the project was full of claims (golden totals, an expected gate verdict, a deterministic Monte Carlo result) that lived as assertions inside the very scripts that produced them. So they became a test suite: 72 tests in four tiers, from component unit tests up through full architecture simulations, with the expected values recorded as regression baselines so that drift must be a conscious edit, never silence. The suite earned its keep on its first run, when the golden-totals test caught stale LeanBroth numbers that had already leaked into a documentation table. It didn't catch the models being wrong; it caught *us* being wrong about the models.
 
-The best part came from mixing test frameworks. MATLAB tests can't be linked to requirements programmatically in R2026a, but Simulink Test cases can, so the simulation tier moved into a generated Simulink Test file whose cases carry Verify links, attached deliberately: LeanBroth's cases stay unlinked regression baselines, because a green test must not vouch for a floor the design genuinely misses. The payoff is the Requirements Editor's Verified column turning green from a headless run. And instead of a code coverage report (circular, when the tests exercise the code that computes the values they assert), the suite now ends with requirements coverage: 28 of 28 requirements implemented, 8 checked by the executable gate, 9 verified by executed tests, and 19 open verification slots as an honest to-do list.
+The best part came from mixing test frameworks. MATLAB tests can't be linked to requirements programmatically in R2026a, but Simulink Test cases can, so the simulation tier moved into a generated Simulink Test file whose cases carry Verify links, attached deliberately: LeanBroth's cases stay unlinked regression baselines, because a green test must not vouch for a floor the design genuinely misses. The payoff is the Requirements Editor's Verified column turning green from a headless run. And instead of a code coverage report (circular, when the tests exercise the code that computes the values they assert), the suite now ends with requirements coverage: 28 of 28 requirements implemented, 8 checked by the executable gate, 10 verified by executed tests, and 18 open verification slots as an honest to-do list.
 
 runFullAnalysis regenerates every number in this post, runAllTests proves them, and the Requirements Editor shows the receipts.
 
@@ -110,7 +110,9 @@ The gravity exercise turned into a repeatable recipe: find a requirement that is
 
 Two more passes through the same recipe produced the campaign's sharpest results. Rocket turnaround rode entirely on instrumentation the transport chunk had already built (two estimate parameters and measurement code, zero model changes), and it found LeanBroth missing the 20-minute limit by 41 seconds at the design shipment size, so the published product is the compliant-shipment envelope rather than a point verdict. And the storage-endurance question got the campaign's first hard no: every variant holds 5 or 6 hours of ingredients against a requirement asking for 72, and pricing compliance exposed a genuine requirements conflict, since 72 hours of ingredients weighs 8 to 12 tonnes against a 15-tonne total mass budget. That one is recorded as a finding with regression baselines that assert the failure, so any future fix has to retire it consciously, and the requirement goes back to its owner with numbers attached.
 
-Requirements verified by executed simulation now stand at 9 of 28, each with its own design-space sweep; two more are measured findings awaiting requirements-owner decisions, and every sweep so far has paid for itself with either a margin number nobody had or a finding nobody expected.
+The storage finding then got its requirements-owner decision, and the resolution is my favorite chapter of the whole study. Consumables were excluded from the mass budget, the stores were resized to hold a true 72 hours, and the finding's regression baselines, which asserted the failure precisely so a fix would have to retire them deliberately, were retired deliberately. But racks that hold 20,000 bowls still weigh something, cost something, and take up room, and HyperCook's razor-thin cost and volume margins could not pay: it dropped out of compliance entirely, leaving EverSimmer as the only variant standing and turning the trade study into a documented forced selection. Resolving one requirement moved the non-compliance somewhere else, and the models watched it happen end to end.
+
+Requirements verified by executed simulation now stand at 10 of 28, each with its own design-space sweep, and every sweep so far has paid for itself with either a margin number nobody had or a finding nobody expected.
 
 ## Working with the agent, this time
 
@@ -132,6 +134,6 @@ Same answer as last time, with more conviction. What changed my mind about the c
 
 ## Now it's your turn
 
-The full project (architectures with inline behavior, the component library, requirements, analysis, tests, and all thirty-one ADRs) is in the repo linked below, along with the skills from the first post. Clone it, run runFullAnalysis, run runAllTests, and check my math. Then tell your agent you want a fourth variant and see what it proposes.
+The full project (architectures with inline behavior, the component library, requirements, analysis, tests, and all thirty-two ADRs) is in the repo linked below, along with the skills from the first post. Clone it, run runFullAnalysis, run runAllTests, and check my math. Then tell your agent you want a fourth variant and see what it proposes.
 
 Have you tried running an architecture trade study with an AI agent in the loop? Where did it help, and where did you have to take the wheel? Let us know in the comments.

@@ -43,7 +43,12 @@ classdef (TestTags = {'analysis'}) tUncertainty < sltest.TestCase
             tc.verifyEqual(unc.variants(:)', tc.VariantOrder);
             tc.verifyEqual(unc.pPass, [1 0.04 1], 'AbsTol', 1e-12, ...
                 'compliance probabilities moved off their baselines');
-            tc.verifyEqual(unc.winShare2, [0.0164 0.0056 0.9780], 'AbsTol', 1e-12, ...
+            % ADR-032 rebaseline: the double-MC's six static criteria read
+            % live variantMetrics, and the 72 h rack hardware shifted the
+            % cost/volume margins (was [0.0164 0.0056 0.9780]). Post-032
+            % the HyperCook share is also a what-if - it fails the static
+            % volume/cost gates the per-draw rule does not re-check.
+            tc.verifyEqual(unc.winShare2, [0.0164 0.0052 0.9784], 'AbsTol', 1e-12, ...
                 'double-uncertainty win share moved off its baseline');
             tc.verifyEqual(size(unc.thr_bph), [200 3]);
             % every draw keeps at least one compliant variant
