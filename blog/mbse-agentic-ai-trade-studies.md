@@ -58,27 +58,27 @@ EverSimmer takes three of four scenarios and 84% of all possible stakeholder pri
 
 ## Giving the factory a pulse
 
-Everything so far treats the factory as a spreadsheet: rated capacities, lossless flows, nothing ever heats up or breaks. So the next ask was behavioral models, in Simulink, Stateflow, and Simscape as appropriate, and a rerun of the trade on simulated numbers.
+Everything so far treats the factory as a spreadsheet: rated capacities, lossless flows, nothing ever heats up or breaks. The next ask: behavioral models in Simulink, Stateflow, and Simscape, and a rerun of the trade on simulated numbers.
 
-The agent built a shared library of referenced models, one per production role, with the architecture components dictating the boundaries. Then came the part that changed my mind about where simulation should live: composing that library into separate plant models duplicated topology the architecture connectors already encode. So instead, every component got an inline behavior sitting inside the System Composer model, wired to its existing ports. The architecture *is* the simulation. Each plant's controller computes total power and plant mode from the status buses it already receives, and throughput is read off the same shipping port the roll-up used.
+The part that changed my mind about where simulation should live: a separate plant model duplicates topology the architecture connectors already encode, so every component got an inline behavior inside the System Composer model, wired to its existing ports. The architecture *is* the simulation. The controller computes power and plant mode from the status buses it already receives, and throughput reads off the same shipping port the roll-up used.
 
 My favorite component is the batch cook vat: a Stateflow chart sequences Fill-Heat-Simmer-Drain and drives a small Simscape thermal network. Nobody types in a throughput number; it emerges from batch size and physics.
 
 ![The batch cook vat: Stateflow sequencer driving a Simscape thermal network](images/beh_cookvat_model.png)
 
-Simulation immediately showed what static roll-ups can't: HyperCook ships its first bowl 119 seconds after cold start while the batch variants take about 57 minutes, and an early run taught us real process engineering when a 40-bowl batch drained into a rate-limited QC station silently lost most of the batch. Real plants put surge tanks between batch and continuous stages. Now so do we.
+Simulation immediately showed what static roll-ups can't: HyperCook ships its first bowl 119 seconds after cold start, the batch variants take about 57 minutes, and an early run silently lost most of a 40-bowl batch drained into a rate-limited QC station. Real plants put surge tanks between batch and continuous stages; now so do we.
 
 ![Simulated cold start and steady state for all three variants](images/behavioral_throughput.png)
 
 ## The trade study, rerun
 
-Here's the twist: with yield loss and calibration downtime in the model, LeanBroth produces 196.8 bowls per hour against a floor of 200. Its comfortable-looking static margin was an artifact of assuming lossless flow, and the compliance gate formally flags exactly that one check. Per the rule we'd already established (a non-compliant variant has no business being scored), LeanBroth is excluded, and EverSimmer takes every scenario and 98.4% of the Monte Carlo draws.
+Here's the twist: with yield loss and calibration downtime in the model, LeanBroth produces 196.8 bowls per hour against a floor of 200. Its comfortable static margin was an artifact of lossless flow, and the compliance gate flags exactly that check. Under the rule we'd already set (a non-compliant variant has no business being scored), LeanBroth is excluded, and EverSimmer takes every scenario and 98.4% of the Monte Carlo draws.
 
-The fault runs corrected an assumption of ours, too: HyperCook's single string turns out to be its QC scanner, not the conveyor, because the architecture never put a conveyor on the material path. At two hours in, each variant loses its worst-case component: HyperCook and LeanBroth collapse to zero, EverSimmer's supervisor reports Degraded and settles at 67%. We had claimed that number in a spreadsheet for months; now there's a time history of it.
+The fault runs corrected an assumption too: HyperCook's single string is its QC scanner, not the conveyor, because the architecture never put a conveyor on the material path. At two hours in, each variant loses its worst component: HyperCook and LeanBroth collapse to zero, EverSimmer reports Degraded and settles at 67%. We had claimed that number in a spreadsheet for months; now there's a time history of it.
 
 ![Worst-case single-fault response: two variants collapse, one degrades](images/behavioral_fault.png)
 
-Honest caveats: the reject fractions and calibration schedules are my engineering estimates, and a better QC bench puts LeanBroth back over the floor, so the real output is a redesign study. And the behavioral layer produced new discriminators, like energy per bowl, where LeanBroth is best and HyperCook worst. More fidelity doesn't just check old numbers; it generates new arguments.
+Honest caveats: the reject fractions and calibration schedules are my engineering estimates, and a better QC bench puts LeanBroth back over the floor, so the real output is a redesign study. The behavioral layer also produced new discriminators, like energy per bowl (LeanBroth best, HyperCook worst). More fidelity doesn't just check old numbers; it generates new arguments.
 
 ## Putting error bars on the physics
 
