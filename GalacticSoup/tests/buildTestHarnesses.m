@@ -50,6 +50,13 @@ for m = 1:size(models,1)
         ph = get_param(outs{k}, 'PortHandles');
         set_param(get_param(ph.Inport(1), 'Line'), 'Name', sig);
     end
+    % the AmbientGravity source resolves from the SAME dictionary entry
+    % that drives the gravity physics (ADR-034): one source of truth, and
+    % a Gravity_g override moves the signal and the physics coherently
+    % the port is bus-typed (GravityData): a bus-typed Constant takes a
+    % struct expression matching the bus elements
+    set_param([hn '/AmbientGravity'], 'Value', ...
+        'struct(''gravity_g'', Gravity_g, ''compensation_pct'', 100)');
     save_system(hn);
     sltest.harness.close(mdl, hn);
     fprintf('%s: harness %s built (external)\n', mdl, hn);

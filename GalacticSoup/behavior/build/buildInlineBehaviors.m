@@ -232,7 +232,15 @@ stubOnly(mdlA, [mdl '/CompactFissionReactor'], {'statusPower','0'});
 stubOnly(mdlA, [mdl '/RefuelSkid'], {'statusRefuel','8'});
 stubOnly(mdlA, [mdl '/AGVCartPool'], {'statusTransport','8'});
 p = beh(mdlA, [mdl '/GravityCompUnit']);
-makeOuts(p,'envStatus','GravityData', {'gravity_g','1';'compensation_pct','100'});
+% ADR-034: the compensator CONSUMES the root AmbientGravity input and
+% reports the measured field on envStatus.gravity_g (was a constant 1 -
+% a sensor that lied at any other gravity). Truth flows only when a
+% parent drives the root port: the test harness source resolves it
+% from Gravity_g; bare simulation grounds it to 0 (documented).
+inEl(p,'ambientGravity','gravity_g');
+outs = makeOuts(p,'envStatus','GravityData', {'compensation_pct','100'});
+lineTo(p, [blkOf(p,'ambientGravity') '/1'], outs('gravity_g'));
+logLine(p, blkOf(p,'ambientGravity'), 'ambientGravity');
 p = beh(mdlA, [mdl '/BarcodeInventorySystem']);
 makeOuts(p,'inventoryStatus','StockData', {'itemId','1';'qty_units','500';'error_pct','0'});
 makeOuts(p,'reorderRequest','StockData', {'itemId','1';'qty_units','0';'error_pct','0'});
@@ -423,7 +431,15 @@ stubOnly(mdlA, [mdl '/FusionPowerPlant'], {'statusPower','0'});
 stubOnly(mdlA, [mdl '/RefuelingStation'], {'statusRefuel','20'});
 stubOnly(mdlA, [mdl '/ConveyorNetwork'], {'statusTransport','25'});
 p = beh(mdlA, [mdl '/GravityCompensatorArray']);
-makeOuts(p,'envStatus','GravityData', {'gravity_g','1';'compensation_pct','100'});
+% ADR-034: the compensator CONSUMES the root AmbientGravity input and
+% reports the measured field on envStatus.gravity_g (was a constant 1 -
+% a sensor that lied at any other gravity). Truth flows only when a
+% parent drives the root port: the test harness source resolves it
+% from Gravity_g; bare simulation grounds it to 0 (documented).
+inEl(p,'ambientGravity','gravity_g');
+outs = makeOuts(p,'envStatus','GravityData', {'compensation_pct','100'});
+lineTo(p, [blkOf(p,'ambientGravity') '/1'], outs('gravity_g'));
+logLine(p, blkOf(p,'ambientGravity'), 'ambientGravity');
 p = beh(mdlA, [mdl '/InventorySensorGrid']);
 makeOuts(p,'inventoryStatus','StockData', {'itemId','1';'qty_units','800';'error_pct','0'});
 makeOuts(p,'reorderRequest','StockData', {'itemId','1';'qty_units','0';'error_pct','0'});
@@ -637,7 +653,15 @@ stubOnly(mdlA, [mdl '/RedundantReactorPair'], {'statusPower','0'});
 stubOnly(mdlA, [mdl '/AutoRefuelCell'], {'statusRefuel','10'});
 stubOnly(mdlA, [mdl '/RoboTransportSwarm'], {'statusTransport','15'});
 p = beh(mdlA, [mdl '/GravityCompMesh']);
-makeOuts(p,'envStatus','GravityData', {'gravity_g','1';'compensation_pct','100'});
+% ADR-034: the compensator CONSUMES the root AmbientGravity input and
+% reports the measured field on envStatus.gravity_g (was a constant 1 -
+% a sensor that lied at any other gravity). Truth flows only when a
+% parent drives the root port: the test harness source resolves it
+% from Gravity_g; bare simulation grounds it to 0 (documented).
+inEl(p,'ambientGravity','gravity_g');
+outs = makeOuts(p,'envStatus','GravityData', {'compensation_pct','100'});
+lineTo(p, [blkOf(p,'ambientGravity') '/1'], outs('gravity_g'));
+logLine(p, blkOf(p,'ambientGravity'), 'ambientGravity');
 p = beh(mdlA, [mdl '/SmartInventoryNet']);
 makeOuts(p,'inventoryStatus','StockData', {'itemId','1';'qty_units','900';'error_pct','0'});
 makeOuts(p,'reorderRequest','StockData', {'itemId','1';'qty_units','0';'error_pct','0'});
