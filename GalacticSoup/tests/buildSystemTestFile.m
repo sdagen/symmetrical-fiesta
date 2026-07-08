@@ -289,6 +289,41 @@ for i = 1:size(rcp,1)
         recFrag], rcp{i,4});
 end
 
+% --- StorageEndurance suite: SR-GS-021 measured non-compliance ---
+% Resupply cut at t = 3600 s with stores full; endurance = last
+% productive instant minus cutoff. ALL variants fail the 72 h
+% requirement by an order of magnitude (ADR-030: compliant storage
+% masses 7.8-12.2 t against the 15 t system budget - a requirements
+% conflict with SR-GS-011). No Verify links; these are regression
+% baselines of the finding, and the < 72 h assertion means any future
+% redesign that fixes it must consciously retire these cases.
+endSuite = createTestSuite(tf, 'StorageEndurance');
+for stray = getTestCases(endSuite)
+    remove(stray);
+end
+% {name, model, init var, cap, endurance h}
+edu = { ...
+ 'HyperCook storage endurance - regression baseline',  'PhysicalHyperCook',  'HC_StorageInit_bowls', 2000, 6.41; ...
+ 'LeanBroth storage endurance - regression baseline',  'PhysicalLeanBroth',  'LB_StorageInit_bowls', 800,  4.66; ...
+ 'EverSimmer storage endurance - regression baseline', 'PhysicalEverSimmer', 'ES_StorageInit_bowls', 1200, 5.44};
+for i = 1:size(edu,1)
+    tc = createTestCase(endSuite, 'simulation', edu{i,1});
+    setProperty(tc, 'Model', edu{i,2});
+    setProperty(tc, 'OverrideStopTime', true);
+    setProperty(tc, 'StopTime', 46800);
+    ps = addParameterSet(tc, 'Name', 'endurance');
+    addParameterOverride(ps, 'Resupply_Cutoff_T', 3600);
+    addParameterOverride(ps, edu{i,3}, edu{i,4});
+    cc = getCustomCriteria(tc);
+    cc.Enabled = true;
+    cc.Callback = sprintf([harvest ...
+        'lastIdx = find(flow.Data*3600 > 20, 1, ''last'');\n' ...
+        'endur_h = (flow.Time(lastIdx) - 3600)/3600;\n' ...
+        'test.verifyEqual(endur_h, %g, ''AbsTol'', 0.3, ''endurance regression band'');\n' ...
+        'test.verifyLessThan(endur_h, 72, ''SR-GS-021 finding: retire this case if fixed'');\n'], ...
+        edu{i,5});
+end
+
 % save FIRST so cases carry persistent IDs, then link (links made against
 % unsaved cases capture provisional IDs and never match executed results)
 saveToFile(tf);
@@ -310,5 +345,5 @@ saveToFile(tf);
 slreq.saveAll();
 pf = {proj.Files.Path};
 if ~any(strcmpi(pf, tfPath)), addFile(proj, tfPath); end
-fprintf('%s built: 16 cases, %d Verify links\n', tfPath, nLinks);
+fprintf('%s built: 19 cases, %d Verify links\n', tfPath, nLinks);
 end

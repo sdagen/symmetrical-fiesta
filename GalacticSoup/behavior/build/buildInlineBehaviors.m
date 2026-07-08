@@ -40,7 +40,7 @@ set_param(mdl, 'SolverType','Variable-step', 'StopTime','14400');
 
 % fault-time variables (1e9 s = never; Step blocks reject inf)
 mws = get_param(mdl,'ModelWorkspace');
-for v = {'Fault_T_Prep','Fault_T_Kettle1','Fault_T_Kettle2','Fault_T_QC','Fault_T_Pack'}
+for v = {'Fault_T_Prep','Fault_T_Kettle1','Fault_T_Kettle2','Fault_T_QC','Fault_T_Pack','Resupply_Cutoff_T'}
     assignin(mws, v{1}, 1e9);
 end
 
@@ -49,7 +49,14 @@ p = beh(mdlA, [mdl '/TriPadLandingField']);
 inEl(p,'loadedShipment','flow_bps');
 outs = makeOuts(p,'inboundCargo','IngredientPallet', {'palletId','0';'mass_kg','0';'temp_C','4'});
 rs = addB(p,'ResupplyRate','simulink/Sources/Constant',{'Value','LB_Resupply_bph/3600'});
-line(p, rs, outs('flow_bps'));
+% resupply cutoff gate (SR-GS-021 endurance, ADR-030): supply stops at
+% Resupply_Cutoff_T (model-workspace, default 1e9 = never; override per run)
+rg = addB(p,'CutoffGate','simulink/Sources/Step', ...
+    {'Time','Resupply_Cutoff_T'; 'Before','1'; 'After','0'});
+rp = addB(p,'ResupplyGated','simulink/Math Operations/Product',{});
+add_line(p, [rs '/1'], [rp '/1']);
+add_line(p, [rg '/1'], [rp '/2']);
+line(p, rp, outs('flow_bps'));
 outs = makeOuts(p,'outboundShipments','SealedContainerBatch', {'batchId','0';'count','0';'sealRating_days','365'});
 passThrough(p, blkOf(p,'loadedShipment'), outs('flow_bps'), 240/3600);
 stubStatus(p,'statusFleet', '15', '1');
@@ -243,7 +250,7 @@ mdlA = systemcomposer.loadModel(mdl);
 set_param(mdl, 'SolverType','Variable-step', 'StopTime','14400');
 mws = get_param(mdl,'ModelWorkspace');
 for v = {'Fault_T_Prep1','Fault_T_Prep2','Fault_T_Cook1','Fault_T_Cook2', ...
-         'Fault_T_Cook3','Fault_T_Cook4','Fault_T_QC','Fault_T_Pack'}
+         'Fault_T_Cook3','Fault_T_Cook4','Fault_T_QC','Fault_T_Pack','Resupply_Cutoff_T'}
     assignin(mws, v{1}, 1e9);
 end
 
@@ -251,7 +258,14 @@ p = beh(mdlA, [mdl '/LaunchPadComplex']);
 inEl(p,'loadedShipment','flow_bps');
 outs = makeOuts(p,'inboundCargo','IngredientPallet', {'palletId','0';'mass_kg','0';'temp_C','4'});
 rs = addB(p,'ResupplyRate','simulink/Sources/Constant',{'Value','HC_Resupply_bph/3600'});
-line(p, rs, outs('flow_bps'));
+% resupply cutoff gate (SR-GS-021 endurance, ADR-030): supply stops at
+% Resupply_Cutoff_T (model-workspace, default 1e9 = never; override per run)
+rg = addB(p,'CutoffGate','simulink/Sources/Step', ...
+    {'Time','Resupply_Cutoff_T'; 'Before','1'; 'After','0'});
+rp = addB(p,'ResupplyGated','simulink/Math Operations/Product',{});
+add_line(p, [rs '/1'], [rp '/1']);
+add_line(p, [rg '/1'], [rp '/2']);
+line(p, rp, outs('flow_bps'));
 outs = makeOuts(p,'outboundShipments','SealedContainerBatch', {'batchId','0';'count','0';'sealRating_days','365'});
 passThrough(p, 'in_loadedShipment', outs('flow_bps'), 360/3600);
 stubStatus(p,'statusFleet', '20', '1');
@@ -428,7 +442,7 @@ mdl = 'PhysicalEverSimmer';
 mdlA = systemcomposer.loadModel(mdl);
 set_param(mdl, 'SolverType','Variable-step', 'StopTime','14400');
 mws = get_param(mdl,'ModelWorkspace');
-for v = {'Fault_T_Cell1','Fault_T_Cell2','Fault_T_Cell3'}
+for v = {'Fault_T_Cell1','Fault_T_Cell2','Fault_T_Cell3','Resupply_Cutoff_T'}
     assignin(mws, v{1}, 1e9);
 end
 
@@ -436,7 +450,14 @@ p = beh(mdlA, [mdl '/TriplePadPort']);
 inEl(p,'loadedShipment','flow_bps');
 outs = makeOuts(p,'inboundCargo','IngredientPallet', {'palletId','0';'mass_kg','0';'temp_C','4'});
 rs = addB(p,'ResupplyRate','simulink/Sources/Constant',{'Value','ES_Resupply_bph/3600'});
-line(p, rs, outs('flow_bps'));
+% resupply cutoff gate (SR-GS-021 endurance, ADR-030): supply stops at
+% Resupply_Cutoff_T (model-workspace, default 1e9 = never; override per run)
+rg = addB(p,'CutoffGate','simulink/Sources/Step', ...
+    {'Time','Resupply_Cutoff_T'; 'Before','1'; 'After','0'});
+rp = addB(p,'ResupplyGated','simulink/Math Operations/Product',{});
+add_line(p, [rs '/1'], [rp '/1']);
+add_line(p, [rg '/1'], [rp '/2']);
+line(p, rp, outs('flow_bps'));
 outs = makeOuts(p,'outboundShipments','SealedContainerBatch', {'batchId','0';'count','0';'sealRating_days','365'});
 passThrough(p, 'in_loadedShipment', outs('flow_bps'), 280/3600);
 stubStatus(p,'statusFleet', '18', '1');
