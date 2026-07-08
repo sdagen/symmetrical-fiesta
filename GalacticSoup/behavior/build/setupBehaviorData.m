@@ -57,8 +57,13 @@ common = { ...
  'Soup_cp_JpkgK',  3900;   ... % specific heat of vegan soup
  'FillTemp_C',     12;     ... % chilled ingredient inlet temperature
  'Ambient_C',      25;     ... % habitat ambient
- 'SimmerTemp_C',   95;     ... % target cook temperature
- 'VatLoss_WpK',    15};        % convective loss coefficient (h*A)
+ 'SimmerTemp_C',   94;     ... % target cook temperature: SR-GS-008 band is
+ ...                           % 70-95 C SERVED; bang-bang ripple is +-0.5 C,
+ ...                           % so targeting the band edge (95) serves at up
+ ...                           % to 95.2 C - caught by the SR-GS-008 criterion
+ ...                           % (ADR-026); 94 leaves control-ripple margin
+ 'VatLoss_WpK',    15;     ... % convective loss coefficient (h*A)
+ 'Gravity_g',      1};         % ambient gravity (g); overridden per run for SR-GS-015
 for i = 1:size(common,1), addEntry(sCo, common{i,1}, common{i,2}); end
 saveChanges(dCo);
 

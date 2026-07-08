@@ -90,7 +90,10 @@ sm = addB(p,'SupplySum','simulink/Math Operations/Add',{'Inputs','++'});
 line(p, blkOf(p,'stagedDry'), sm); lineTo(p, [blkOf(p,'stagedCold') '/1'], [sm '/2']);
 gate = faultGate(p, 'Fault_T_Prep');
 en = enableOf(p, gate);
-m = addRef(p,'Prep','BehPrepUnit', {'PrepRate_bph','LB_PrepRate_bph'});
+% gravity: semi-automated prep is human-paced; capability derates above
+% 2 g and floors at 50% (SR-GS-015 exercise, ADR-026)
+m = addRef(p,'Prep','BehPrepUnit', ...
+    {'PrepRate_bph','LB_PrepRate_bph*max(0.5, 1 - 0.05*max(0, Gravity_g - 2))'});
 line(p, sm, [m '/1']); lineTo(p, [en '/1'], [m '/2']);
 outs = makeOuts(p,'preppedBatch','PreparedBatch', {'batchId','0';'recipeId','0'});
 lineTo(p, [m '/1'], outs('flow_bps'));
@@ -111,7 +114,8 @@ for k = 1:2
     m = addRef(p,'Vat','BehCookVat', {'BatchSize_bowls','LB_BatchSize_bowls'; ...
         'HeaterPower_kW','LB_HeaterPower_kW'; 'VatThermalMass_JpK','LB_VatThermalMass_JpK'; ...
         'FillRate_bps','LB_FillRate_bps'; 'SimmerTime_s','LB_SimmerTime_s'; ...
-        'DrainTime_s','LB_DrainTime_s'; 'CleanTime_s','LB_CleanTime_s'});
+        'DrainTime_s','LB_DrainTime_s/sqrt(Gravity_g)'; ...   % Torricelli: outflow speed ~ sqrt(g)
+        'CleanTime_s','LB_CleanTime_s'});
     line(p, g, [m '/1']); lineTo(p, [en '/1'], [m '/2']);
     outs = makeOuts(p, sprintf('cookedSoup%d',k), 'SoupStream', {'batchId','0';'contamination_ppm','0'});
     lineTo(p, [m '/1'], outs('flow_bps'));
@@ -279,7 +283,9 @@ for s = 1:2
     inEl(p,'directive','setpoint');
     gate = faultGate(p, hcPreps{s,5});
     en = enableOf(p, gate);
-    m = addRef(p,'Prep','BehPrepUnit', {'PrepRate_bph','HC_PrepRate_bph'});
+    % gravity: robotic prep servo margin derates gently above 4 g (ADR-026)
+    m = addRef(p,'Prep','BehPrepUnit', ...
+        {'PrepRate_bph','HC_PrepRate_bph*max(0.5, 1 - 0.015*max(0, Gravity_g - 4))'});
     line(p, ['in_' hcPreps{s,2}], [m '/1']); lineTo(p, [en '/1'], [m '/2']);
     outs = makeOuts(p, hcPreps{s,3}, 'PreparedBatch', {'batchId','0';'recipeId','0'});
     lineTo(p, [m '/1'], outs('flow_bps'));
@@ -449,7 +455,9 @@ for cellN = 1:3
     line(p, 'in_stagedIngredients', g);
     gate = faultGate(p, fvar);
     en = enableOf(p, gate);
-    m = addRef(p,'Prep','BehPrepUnit', {'PrepRate_bph','ES_PrepRate_bph'});
+    % gravity: robotic prep servo margin derates gently above 4 g (ADR-026)
+    m = addRef(p,'Prep','BehPrepUnit', ...
+        {'PrepRate_bph','ES_PrepRate_bph*max(0.5, 1 - 0.015*max(0, Gravity_g - 4))'});
     line(p, g, [m '/1']); lineTo(p, [en '/1'], [m '/2']);
     outs = makeOuts(p,'preppedBatch','PreparedBatch', {'batchId','0';'recipeId','0'});
     lineTo(p, [m '/1'], outs('flow_bps'));
@@ -466,7 +474,8 @@ for cellN = 1:3
     m = addRef(p,'Vat','BehCookVat', {'BatchSize_bowls','ES_BatchSize_bowls'; ...
         'HeaterPower_kW','ES_HeaterPower_kW'; 'VatThermalMass_JpK','ES_VatThermalMass_JpK'; ...
         'FillRate_bps','ES_FillRate_bps'; 'SimmerTime_s','ES_SimmerTime_s'; ...
-        'DrainTime_s','ES_DrainTime_s'; 'CleanTime_s','ES_CleanTime_s'});
+        'DrainTime_s','ES_DrainTime_s/sqrt(Gravity_g)'; ...   % Torricelli: outflow speed ~ sqrt(g)
+        'CleanTime_s','ES_CleanTime_s'});
     line(p, 'in_preppedBatch', m); lineTo(p, [en '/1'], [m '/2']);
     outs = makeOuts(p,'cookedSoup','SoupStream', {'batchId','0';'contamination_ppm','0'});
     lineTo(p, [m '/1'], outs('flow_bps'));
@@ -479,6 +488,17 @@ for cellN = 1:3
     lineTo(p, [m '/2'], souts('power_kW'));
     lineTo(p, [gate '/1'], souts('health'));
     term(p, [m '/5']);
+    if cellN == 1
+        % log served-soup temperature AND vat state for SR-GS-008
+        % verification: serving temp = temp while state == VAT_DRAIN.
+        % Must run AFTER all vat outports are wired (needs live lines);
+        % DataLogging is a property of the source PORT, not the line.
+        ph_ = get_param([p '/Vat'], 'PortHandles');
+        set_param(get_param(ph_.Outport(3),'Line'), 'Name', 'vatTemp_Cell1');
+        set_param(ph_.Outport(3), 'DataLogging', 'on');
+        set_param(get_param(ph_.Outport(4),'Line'), 'Name', 'vatState_Cell1');
+        set_param(ph_.Outport(4), 'DataLogging', 'on');
+    end
 
     p = beh(mdlA, [cellPath '/CellQCSensor']);
     inEl(p,'cookedSoup','flow_bps');
