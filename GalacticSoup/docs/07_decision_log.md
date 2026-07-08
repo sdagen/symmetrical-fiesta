@@ -320,7 +320,7 @@ Architecture Decision Record (ADR) style log for the Intergalactic Vegan Soup Fa
 
 **Context.** SR-GS-018 caps delivery-rocket loading at 20 minutes. No rocket-level behavior existed, but the transport-loading branch (ADR-028) already logs the loaded-shipment flow at every dock.
 
-**Decision.** Model turnaround as fill time plus handling overhead, measured from the logged loaded-flow cumulative curve: two new estimate parameters (`Rocket_Load_bowls` = 60, `Rocket_Handling_s` = 120) and measurement code only — the cheapest chunk of the verification series, riding entirely on ADR-028's instrumentation. [`analysis/runTurnaroundSweep.m`](../analysis/runTurnaroundSweep.m) prices turnaround for shipments of 40-120 bowls from one nominal simulation per variant; a `RocketTurnaround` suite adds three cases with Verify links for HyperCook and EverSimmer and an unlinked regression baseline for LeanBroth asserting turnaround > 1200 s (the finding-retirement convention from ADR-030).
+**Decision.** Model turnaround as fill time plus handling overhead, measured from the logged loaded-flow cumulative curve: two new estimate parameters (`Rocket_Load_bowls` = 60, `Rocket_Handling_s` = 120) and measurement code only — the cheapest increment of the verification series, riding entirely on ADR-028's instrumentation. [`analysis/runTurnaroundSweep.m`](../analysis/runTurnaroundSweep.m) prices turnaround for shipments of 40-120 bowls from one nominal simulation per variant; a `RocketTurnaround` suite adds three cases with Verify links for HyperCook and EverSimmer and an unlinked regression baseline for LeanBroth asserting turnaround > 1200 s (the finding-retirement convention from ADR-030).
 
 **Status.** Accepted.
 
