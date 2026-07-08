@@ -36,7 +36,7 @@ The production cell is my favorite part: a composite component with a miniature 
 
 ![Inside an EverSimmer production cell](images/EverSimmer_ProductionCell.png)
 
-One design decision worth pausing on: these are three separate architecture models, not variant components in one model. The variants differ in topology, hierarchy depth, and component count, and each needs its own allocation set and roll-up. Three models sharing one interface dictionary and one stereotype profile turned out much cleaner, and that reasoning went into an ADR-style decision log (thirty-two entries by the end of this post), the single most useful artifact for picking work back up weeks later.
+One design decision worth pausing on: these are three separate architecture models, not variant components in one model. The variants differ in topology, hierarchy depth, and component count, and each needs its own allocation set and roll-up. Three models sharing one interface dictionary and one stereotype profile turned out much cleaner, and that reasoning went into an ADR-style decision log (thirty-four entries by the end of this post), the single most useful artifact for picking work back up weeks later.
 
 ## Making the variants measurable
 
@@ -66,7 +66,7 @@ My favorite component is the batch cook vat: a Stateflow chart sequences Fill-He
 
 ![The batch cook vat: Stateflow sequencer driving a Simscape thermal network](images/beh_cookvat_model.png)
 
-Simulation immediately showed what static roll-ups can't: HyperCook ships its first bowl 119 seconds after cold start, the batch variants take about 57 minutes, and an early run silently lost most of a 40-bowl batch drained into a rate-limited QC station. Real plants put surge tanks between batch and continuous stages; now so do we.
+Simulation immediately showed what static roll-ups can't: HyperCook ships its first bowl 119 seconds after cold start, the batch variants take about 57 minutes, and an early run silently lost most of a 40-bowl batch as it drained into a rate-limited QC station. Real plants put surge tanks between batch and continuous stages; now so do we.
 
 ![Simulated cold start and steady state for all three variants](images/behavioral_throughput.png)
 
@@ -130,6 +130,6 @@ Same answer as last time, with more conviction. What changed my mind about the c
 
 ## Now it's your turn
 
-The full project (architectures with inline behavior, the component library, requirements, analysis, tests, and all thirty-two ADRs) is in the repo linked below, along with the skills from the first post. Clone it, run runFullAnalysis, run runAllTests, and check my math. Then tell your agent you want a fourth variant and see what it proposes.
+The full project (architectures with inline behavior, the component library, requirements, analysis, tests, and all thirty-four ADRs) is in the repo linked below, along with the skills from the first post. Clone it, run runFullAnalysis, run runAllTests, and check my math. Then tell your agent you want a fourth variant and see what it proposes.
 
 Have you tried running an architecture trade study with an AI agent in the loop? Where did it help, and where did you have to take the wheel? Let us know in the comments.
