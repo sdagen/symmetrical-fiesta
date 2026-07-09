@@ -1,6 +1,6 @@
 function results = runAllTests(tier)
 %RUNALLTESTS Run the project's complete verification stack as ONE suite.
-%   results = runAllTests()          all 37 tests: MATLAB-based tiers
+%   results = runAllTests()          the full suite: MATLAB-based tiers
 %                                    (component/analysis/traceability)
 %                                    and the Simulink Test simulation
 %                                    cases, one runner, equal citizens
@@ -20,7 +20,7 @@ function results = runAllTests(tier)
 %   Requirements Table rows), and verification status (Verify links from
 %   the simulation test cases, with pass/fail from the run just executed).
 %   The two test-verified SRs are asserted verified-passed. For the
-%   formal document version, see analysis/makeRequirementsReport.
+%   formal document version, see analysis/reporting/makeRequirementsReport.
 
 import matlab.unittest.TestRunner
 
@@ -88,6 +88,6 @@ if fullRun
         st = getVerificationStatus(find(srSet, 'Id', id{1}));
         assert(st.failed == 0 && st.unexecuted == 0, '%s not verified', id{1});
     end
-    fprintf('  formal report: run analysis/makeRequirementsReport\n');
+    fprintf('  formal report: run analysis/reporting/makeRequirementsReport\n');
 end
 end

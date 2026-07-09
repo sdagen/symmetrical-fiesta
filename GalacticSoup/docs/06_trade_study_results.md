@@ -1,6 +1,6 @@
 # 06 — Trade Study Results
 
-Methodology: [`05_trade_study_methodology.md`](05_trade_study_methodology.md). Source data: [`../analysis/variantMetrics.csv`](../analysis/variantMetrics.csv), [`../analysis/tradeScores.csv`](../analysis/tradeScores.csv), [`../analysis/mcWinShare.csv`](../analysis/mcWinShare.csv), produced by [`../analysis/runVariantAnalysis.m`](../analysis/runVariantAnalysis.m) and [`../analysis/runTradeStudy.m`](../analysis/runTradeStudy.m). Variant design concepts are described in [`04_physical_variants.md`](04_physical_variants.md).
+Methodology: [`05_trade_study_methodology.md`](05_trade_study_methodology.md). Source data: [`../analysis/results/variantMetrics.csv`](../analysis/results/variantMetrics.csv), [`../analysis/results/tradeScores.csv`](../analysis/results/tradeScores.csv), [`../analysis/results/mcWinShare.csv`](../analysis/results/mcWinShare.csv), produced by [`../analysis/pipeline/runVariantAnalysis.m`](../analysis/pipeline/runVariantAnalysis.m) and [`../analysis/pipeline/runTradeStudy.m`](../analysis/pipeline/runTradeStudy.m). Variant design concepts are described in [`04_physical_variants.md`](04_physical_variants.md).
 
 The trade study has been run. This document reports the full results and the recommendation that follows from them.
 

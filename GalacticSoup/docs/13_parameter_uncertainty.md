@@ -2,7 +2,7 @@
 
 Branch exploration: giving the trade study's *performance* claims the same sensitivity treatment its *preference* claims already had. The weights-only Monte Carlo (ADR-013, [`05_trade_study_methodology.md`](05_trade_study_methodology.md)) answers "does the winner depend on whose opinion you ask?" — it re-scores fixed metrics under 5,000 random stakeholder weightings, running zero simulations. This study answers the question that sweep deliberately leaves open: "does the verdict depend on the parameters that are engineering estimates rather than measurements?" — by actually simulating the architecture models under parameter draws.
 
-Artifacts: [`../analysis/uncertaintySpec.m`](../analysis/uncertaintySpec.m) (study definition), [`../analysis/runUncertaintySims.m`](../analysis/runUncertaintySims.m) (per-variant `parsim` batches), [`../analysis/runUncertaintyStudy.m`](../analysis/runUncertaintyStudy.m) (post-processing, figures), [`../tests/tUncertainty.m`](../tests/tUncertainty.m) (baselines + reproducibility contract). Decision: ADR-025 in [`07_decision_log.md`](07_decision_log.md).
+Artifacts: [`../analysis/sweeps/uncertaintySpec.m`](../analysis/sweeps/uncertaintySpec.m) (study definition), [`../analysis/sweeps/runUncertaintySims.m`](../analysis/sweeps/runUncertaintySims.m) (per-variant `parsim` batches), [`../analysis/sweeps/runUncertaintyStudy.m`](../analysis/sweeps/runUncertaintyStudy.m) (post-processing, figures), [`../tests/analysis/tUncertainty.m`](../tests/analysis/tUncertainty.m) (baselines + reproducibility contract). Decision: ADR-025 in [`07_decision_log.md`](07_decision_log.md).
 
 ## 1. What is uncertain
 
