@@ -1,7 +1,7 @@
 # 02 — Functional Architecture
 
-Model: [`../architecture/GalacticSoupFunctional.slx`](../architecture/GalacticSoupFunctional.slx)
-Interface dictionary: [`../architecture/FunctionalInterfaces.sldd`](../architecture/FunctionalInterfaces.sldd)
+Model: [`../architecture/functional/GalacticSoupFunctional.slx`](../architecture/functional/GalacticSoupFunctional.slx)
+Interface dictionary: [`../architecture/functional/FunctionalInterfaces.sldd`](../architecture/functional/FunctionalInterfaces.sldd)
 
 ## 1. Decomposition rationale
 

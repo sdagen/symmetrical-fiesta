@@ -2,7 +2,7 @@
 
 Branch exploration: the behavioral layer had no gravity dependence at all, despite SR-GS-015 requiring nominal operation across 0.1 g to 12 g — and despite every variant carrying a gravity-compensation component that had never been asked to compensate for anything. This branch gives the behaviors gravity physics, sweeps the full required range, and converts three previously-unexercised requirements (SR-GS-015, SR-GS-025, SR-GS-008) into verified-by-executed-test status. Two design findings came out, one per fidelity direction: the trade winner has a microgravity hole, and the vat targeted the top of the serving-temperature band.
 
-Artifacts: gravity physics in [`../behavior/build/buildInlineBehaviors.m`](../behavior/build/buildInlineBehaviors.m) (instance-parameter expressions), [`../analysis/runGravitySweep.m`](../analysis/runGravitySweep.m), [`../tests/tGravity.m`](../tests/tGravity.m), the `GravityExtremes` suite in [`../tests/GalacticSoupSystemTests.mldatx`](../tests/GalacticSoupSystemTests.mldatx). Decision: ADR-026 in [`07_decision_log.md`](07_decision_log.md).
+Artifacts: gravity physics in [`../behavior/build/buildInlineBehaviors.m`](../behavior/build/buildInlineBehaviors.m) (instance-parameter expressions), [`../analysis/sweeps/runGravitySweep.m`](../analysis/sweeps/runGravitySweep.m), [`../tests/analysis/tGravity.m`](../tests/analysis/tGravity.m), the `GravityExtremes` suite in [`../tests/system/GalacticSoupSystemTests.mldatx`](../tests/system/GalacticSoupSystemTests.mldatx). Decision: ADR-026 in [`07_decision_log.md`](07_decision_log.md).
 
 ## 1. Where the physics lives
 

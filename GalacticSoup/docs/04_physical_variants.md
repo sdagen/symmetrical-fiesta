@@ -1,6 +1,6 @@
 # 04 — Physical Architecture Variants
 
-Models (in progress): `../architecture/PhysicalHyperCook.slx`, `../architecture/PhysicalLeanBroth.slx`, `../architecture/PhysicalEverSimmer.slx`
+Models (in progress): `../architecture/physical/HyperCook/PhysicalHyperCook.slx`, `../architecture/physical/LeanBroth/PhysicalLeanBroth.slx`, `../architecture/physical/EverSimmer/PhysicalEverSimmer.slx`
 
 The physical layer realizes each logical component (see [`03_logical_architecture.md`](03_logical_architecture.md)) as concrete hardware. Rather than model the physical layer as a single System Composer model with variant components, the project uses **three independent physical models**, one per architecture concept, so each can be rolled up and allocated independently before comparison (see [`07_decision_log.md`](07_decision_log.md) ADR-001). All physical components carry quantitative properties via the `PhysicalProperties` stereotype (`Mass_kg`, `Power_kW`, `Cost_kCredits`, `Volume_m3`, `Throughput_bph`, `AutomationLevel`, `OperatorsRequired`, `MTBF_hr`, `GravityRating_g`, `UseParallelThroughput`) defined in the `GalacticSoupProfile` profile, enabling a uniform roll-up analysis across variants (ADR-007).
 

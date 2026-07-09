@@ -1,7 +1,7 @@
 # 03 — Logical Architecture
 
-Model: [`../architecture/GalacticSoupLogical.slx`](../architecture/GalacticSoupLogical.slx)
-Interface dictionary: [`../architecture/LogicalInterfaces.sldd`](../architecture/LogicalInterfaces.sldd)
+Model: [`../architecture/logical/GalacticSoupLogical.slx`](../architecture/logical/GalacticSoupLogical.slx)
+Interface dictionary: [`../architecture/logical/LogicalInterfaces.sldd`](../architecture/logical/LogicalInterfaces.sldd)
 
 ## 1. Logical components
 

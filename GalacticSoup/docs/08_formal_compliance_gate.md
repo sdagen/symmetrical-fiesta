@@ -2,7 +2,7 @@
 
 Branch exploration: replacing hand-coded compliance checks with an executable, requirement-linked formal gate built on the [Requirements Table block](https://www.mathworks.com/help/slrequirements/ref/requirementstable.html) (Requirements Toolbox).
 
-Artifacts: [`../architecture/GalacticSoupComplianceGate.slx`](../architecture/GalacticSoupComplianceGate.slx) (generated model), [`../analysis/buildComplianceGate.m`](../analysis/buildComplianceGate.m) (generator), [`../analysis/runComplianceGate.m`](../analysis/runComplianceGate.m) (verification harness), [`../analysis/runFullAnalysis.m`](../analysis/runFullAnalysis.m) (orchestrator), [`../analysis/complianceGate.csv`](../analysis/complianceGate.csv) (results). Decisions: ADR-010 and ADR-011 in [`07_decision_log.md`](07_decision_log.md).
+Artifacts: [`../architecture/gate/GalacticSoupComplianceGate.slx`](../architecture/gate/GalacticSoupComplianceGate.slx) (generated model), [`../analysis/pipeline/buildComplianceGate.m`](../analysis/pipeline/buildComplianceGate.m) (generator), [`../analysis/pipeline/runComplianceGate.m`](../analysis/pipeline/runComplianceGate.m) (verification harness), [`../analysis/pipeline/runFullAnalysis.m`](../analysis/pipeline/runFullAnalysis.m) (orchestrator), [`../analysis/results/complianceGate.csv`](../analysis/results/complianceGate.csv) (results). Decisions: ADR-010 and ADR-011 in [`07_decision_log.md`](07_decision_log.md).
 
 ## 1. Why a Requirements Table here
 
@@ -38,7 +38,7 @@ Two hard assertions protect the chain:
 
 ## 4. Results
 
-All 24 variant-gate checks pass and agree with the baseline procedural flags ([`complianceGate.csv`](../analysis/complianceGate.csv)):
+All 24 variant-gate checks pass and agree with the baseline procedural flags ([`complianceGate.csv`](../analysis/results/complianceGate.csv)):
 
 | Variant | Mass | Power | Cost | Volume | Throughput | Automation | Operators | Gravity |
 |---|---|---|---|---|---|---|---|---|

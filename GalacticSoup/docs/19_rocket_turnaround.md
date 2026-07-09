@@ -2,7 +2,7 @@
 
 SR-GS-018 requires the system to complete loading or unloading of a delivery rocket within 20 minutes (1200 s). Unlike the branches that preceded it, this one adds no new behavior to any model. Turnaround is fill time plus handling, and fill time is already sitting in the loaded-shipment flow that doc 16 logged to satisfy SR-GS-006 — `loadedFlow_bps`. The only genuinely new content is two shared-dictionary parameters, both flagged as engineering estimates, and the measurement code that turns an existing signal into a turnaround figure. This is the cheapest increment of the verification series so far, and it rides entirely on instrumentation built for a different requirement.
 
-Artifacts: [`../analysis/runTurnaroundSweep.m`](../analysis/runTurnaroundSweep.m), [`../tests/tTurnaround.m`](../tests/tTurnaround.m), the `RocketTurnaround` suite in [`../tests/GalacticSoupSystemTests.mldatx`](../tests/GalacticSoupSystemTests.mldatx). Decision: ADR-031 in [`07_decision_log.md`](07_decision_log.md).
+Artifacts: [`../analysis/sweeps/runTurnaroundSweep.m`](../analysis/sweeps/runTurnaroundSweep.m), [`../tests/analysis/tTurnaround.m`](../tests/analysis/tTurnaround.m), the `RocketTurnaround` suite in [`../tests/system/GalacticSoupSystemTests.mldatx`](../tests/system/GalacticSoupSystemTests.mldatx). Decision: ADR-031 in [`07_decision_log.md`](07_decision_log.md).
 
 ## 1. Riding existing instrumentation
 
@@ -23,7 +23,7 @@ turnaround = fill_time(R) + Rocket_Handling_s
 
 `fill_time(R)` is the time for the cumulative `loadedFlow_bps` curve to advance by `R` bowls — one rocket load — measured the same way doc 16 measured latency: robust to startup transients and to residual burstiness in the flow curve. The measurement takes 11 steady-state start points spanning 30% to 70% of cumulative production, computes the crossing time for each, and reports the median. Handling is a flat addition — `Rocket_Handling_s`, currently 120 s for all three variants — layered on top of whatever fill time the flow curve gives.
 
-[`runTurnaroundSweep.m`](../analysis/runTurnaroundSweep.m) sweeps `R = [40 60 80 120]` bowls per variant. Because fill time for any `R` falls out of the same cumulative curve — the curve doesn't change shape with shipment size, only the distance being measured along it does — the sweep needs exactly one nominal simulation per variant, three simulations total, not twelve.
+[`runTurnaroundSweep.m`](../analysis/sweeps/runTurnaroundSweep.m) sweeps `R = [40 60 80 120]` bowls per variant. Because fill time for any `R` falls out of the same cumulative curve — the curve doesn't change shape with shipment size, only the distance being measured along it does — the sweep needs exactly one nominal simulation per variant, three simulations total, not twelve.
 
 ## 3. Results and the shipment envelope
 
