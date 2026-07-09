@@ -16,19 +16,19 @@ function buildTestHarnesses()
 %   change.
 
 proj = currentProject;
-models = {'PhysicalHyperCook','HyperCookSystemHarness'; ...
-          'PhysicalLeanBroth','LeanBrothSystemHarness'; ...
-          'PhysicalEverSimmer','EverSimmerSystemHarness'};
+models = {'PhysicalHyperCook','HyperCookSystemHarness','HyperCook'; ...
+          'PhysicalLeanBroth','LeanBrothSystemHarness','LeanBroth'; ...
+          'PhysicalEverSimmer','EverSimmerSystemHarness','EverSimmer'};
 
 % external harness files are created in the CURRENT FOLDER - work from
-% architecture/harnesses/ so they land in their dedicated folder (the
-% *_harnessInfo.xml stays beside the owner model in architecture/physical/)
-harnDir = char(fullfile(proj.RootFolder, 'architecture', 'harnesses'));
-oldDir = cd(harnDir);
+% each variant's folder (architecture/physical/<Variant>/) so the harness
+% lands beside the model and *_harnessInfo.xml it belongs to
+oldDir = pwd;
 restoreDir = onCleanup(@() cd(oldDir));
 
 for m = 1:size(models,1)
     mdl = models{m,1}; hn = models{m,2};
+    cd(char(fullfile(proj.RootFolder, 'architecture', 'physical', models{m,3})));
     load_system(mdl);
     try
         sltest.harness.delete(mdl, hn);
@@ -66,7 +66,8 @@ end
 % register harness files with the project
 pf = {proj.Files.Path};
 for m = 1:size(models,1)
-    f = fullfile(harnDir, [models{m,2} '.slx']);
+    f = fullfile(char(proj.RootFolder), 'architecture', 'physical', ...
+        models{m,3}, [models{m,2} '.slx']);
     if isfile(f) && ~any(strcmpi(pf, f)), addFile(proj, f); end
 end
 end
