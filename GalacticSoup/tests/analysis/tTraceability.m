@@ -5,12 +5,16 @@ classdef (TestTags = {'traceability'}) tTraceability < sltest.TestCase
     % structural rework (see ADR-019/ADR-020 war stories).
 
     properties (TestParameter)
-        % counts include the 4 root-architecture Implement links per model
-        % for the emergent budget SRs, SR-GS-011..014 (ADR-024)
+        % counts include the 4 root-architecture links per model for the
+        % emergent budget SRs, SR-GS-011..014 (ADR-024). Link TYPE is
+        % baseline-scoped (ADR-035): only the adopted baseline
+        % (EverSimmer, ADR-009) carries Implement links; the rejected
+        % variants' links are all Relate, so they keep their trade-study
+        % traceability without contributing to implementation status.
         linkSet = struct( ...
-            'HyperCook',  struct('mdl','PhysicalHyperCook',  'n',14), ...
-            'LeanBroth',  struct('mdl','PhysicalLeanBroth',  'n',14), ...
-            'EverSimmer', struct('mdl','PhysicalEverSimmer', 'n',20));
+            'HyperCook',  struct('mdl','PhysicalHyperCook',  'n',14, 'baseline',false), ...
+            'LeanBroth',  struct('mdl','PhysicalLeanBroth',  'n',14, 'baseline',false), ...
+            'EverSimmer', struct('mdl','PhysicalEverSimmer', 'n',20, 'baseline',true));
     end
 
     methods (TestClassSetup)
@@ -37,6 +41,15 @@ classdef (TestTags = {'traceability'}) tTraceability < sltest.TestCase
                     sprintf('link source outside model: %s', q));
                 dst = slreq.structToObj(destination(L));
                 testCase.verifyMatches(dst.Id, '^SR-GS-\d+$');
+            end
+            types = arrayfun(@(L) string(L.Type), links);
+            if linkSet.baseline
+                testCase.verifyTrue(all(types == "Implement"), ...
+                    'baseline variant must carry Implement links (ADR-035)');
+            else
+                testCase.verifyTrue(all(types == "Relate"), sprintf( ...
+                    '%s is a rejected alternate: links must be Relate, not Implement (ADR-035)', ...
+                    linkSet.mdl));
             end
         end
 

@@ -15,11 +15,17 @@ function results = runAllTests(tier)
 %   requirement verification.
 %
 %   A full run ends with a REQUIREMENTS COVERAGE summary over all 28
-%   system requirements: implementation status (Implement links from the
-%   architectures), formal gate coverage (Refine links from the
-%   Requirements Table rows), and verification status (Verify links from
-%   the simulation test cases, with pass/fail from the run just executed).
-%   The two test-verified SRs are asserted verified-passed. For the
+%   system requirements, scoped to the ADOPTED BASELINE architecture
+%   (EverSimmer, ADR-009/ADR-035): implementation status (Implement
+%   links from the functional architecture and the baseline - the
+%   rejected variants carry Relate links that contribute nothing),
+%   formal gate coverage (Refine links from the Requirements Table
+%   rows), and verification status (Verify links from the baseline's
+%   simulation test cases, with pass/fail from the run just executed).
+%   The nine baseline-verified SRs are asserted verified-passed, and
+%   SR-GS-015 is asserted to carry NO verification claim - it is an
+%   open gap (the baseline fails the floor at 0.1 g, ADR-026) that a
+%   rejected variant's passing case must not paint green. For the
 %   formal document version, see analysis/reporting/makeRequirementsReport.
 
 import matlab.unittest.TestRunner
@@ -79,15 +85,22 @@ if fullRun
             end
         end
     end
-    fprintf('\n=== Requirements coverage (%d system requirements) ===\n', numel(reqs));
-    fprintf('  implemented by architecture (Implement links): %d/%d\n', nImpl, numel(reqs));
+    fprintf('\n=== Requirements coverage (%d system requirements, baseline-scoped per ADR-035) ===\n', numel(reqs));
+    fprintf('  implemented by the baseline (Implement links): %d/%d\n', nImpl, numel(reqs));
     fprintf('  checked by the formal gate (Refine links):     %d/%d\n', nGate, numel(reqs));
-    fprintf('  verified by executed tests (Verify links):     %d passed, %d not passed (%s)\n', ...
+    fprintf('  verified on the baseline (Verify links):       %d passed, %d not passed (%s)\n', ...
         nVerPass, nVerFail, strjoin(verIds, ', '));
-    for id = {'SR-GS-001','SR-GS-002','SR-GS-006','SR-GS-007','SR-GS-008','SR-GS-015','SR-GS-018','SR-GS-021','SR-GS-025','SR-GS-026'}
+    fprintf('  open verification gap: SR-GS-015 (baseline fails the floor at 0.1 g; ADR-026)\n');
+    for id = {'SR-GS-001','SR-GS-002','SR-GS-006','SR-GS-007','SR-GS-008','SR-GS-018','SR-GS-021','SR-GS-025','SR-GS-026'}
         st = getVerificationStatus(find(srSet, 'Id', id{1}));
         assert(st.failed == 0 && st.unexecuted == 0, '%s not verified', id{1});
     end
+    % SR-GS-015 is an OPEN GAP against the baseline: assert nothing claims
+    % to verify it, so a rejected variant's Verify link cannot sneak the
+    % status back to green (ADR-035)
+    st = getVerificationStatus(find(srSet, 'Id', 'SR-GS-015'));
+    assert(st.passed + st.failed + st.unexecuted == 0, ...
+        'SR-GS-015 unexpectedly carries a verification claim');
     fprintf('  formal report: run analysis/reporting/makeRequirementsReport\n');
 end
 end

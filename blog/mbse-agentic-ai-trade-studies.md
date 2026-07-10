@@ -108,7 +108,7 @@ That exercise became the pattern: find a requirement implemented on paper but ex
 
 The owner's ruling, consumables excluded from the mass budget, is my favorite chapter of the study. The stores were resized to a true 72 hours, and the finding's baselines, built to assert the failure precisely so a fix would have to retire them deliberately, were retired deliberately. Then the bill arrived: racks for 20,000 bowls still weigh, cost, and occupy, and HyperCook's razor-thin margins could not pay. It dropped out of compliance entirely, leaving EverSimmer the only variant standing and the trade study a documented forced selection. Resolving one requirement moved the non-compliance somewhere else, and the models watched it happen end to end.
 
-Requirements verified by executed simulation stand at 10 of 28, each with its own design-space sweep, the suite has grown to 72 tests, and every sweep paid for itself with either a margin number nobody had or a finding nobody expected.
+Requirements verified by executed simulation stand at 9 of 28, each with its own design-space sweep, the suite has grown to 72 tests, and every sweep paid for itself with either a margin number nobody had or a finding nobody expected. (The count was briefly 10, until verification status was scoped to the adopted baseline: the gravity requirement's only passing cases belonged to a rejected variant, and a green checkmark borrowed from a design you aren't building is worse than an honest gap.)
 
 ## Working with the agent, this time
 
@@ -130,6 +130,6 @@ Same answer as last time, with more conviction. What changed my mind about the c
 
 ## Now it's your turn
 
-The full project (architectures with inline behavior, the component library, requirements, analysis, tests, and all thirty-four ADRs) is in the repo linked below, along with the skills from the first post. Clone it, run runFullAnalysis, run runAllTests, and check my math. Then tell your agent you want a fourth variant and see what it proposes.
+The full project (architectures with inline behavior, the component library, requirements, analysis, tests, and all thirty-five ADRs) is in the repo linked below, along with the skills from the first post. Clone it, run runFullAnalysis, run runAllTests, and check my math. Then tell your agent you want a fourth variant and see what it proposes.
 
 Have you tried running an architecture trade study with an AI agent in the loop? Where did it help, and where did you have to take the wheel? Let us know in the comments.
