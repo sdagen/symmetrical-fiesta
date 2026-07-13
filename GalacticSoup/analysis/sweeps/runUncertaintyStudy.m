@@ -97,28 +97,29 @@ T = table(vnames', pPass', median(thr)', prctile(thr,5)', prctile(thr,95)', ...
 writetable(T, fullfile(anaDir, 'uncertaintySummary.csv'));
 
 % ===================== figures (house style) =====================
-palette = containers.Map( ...
-    {'HyperCook','LeanBroth','EverSimmer'}, ...
-    {[42 120 214]/255, [27 175 122]/255, [237 161 0]/255});
-surf_ = [252 252 251]/255; inkP = [11 11 11]/255; inkS = [82 81 78]/255;
-gridC = [0.88 0.88 0.87];
+th = gsPlotTheme();   % dark house style; colors by variant name
+palette = th.palette;
+surf_ = th.surface; inkP = th.inkP; inkS = th.inkS; gridC = th.grid;
 
 f = figure('Visible','off','Color',surf_,'Position',[100 100 900 420]);
 ax = axes(f); hold(ax,'on');
+hFill = gobjects(1, nV);
 for v = 1:nV
     [d, x] = ksdensity(thr(:,v));
-    fill(ax, [x fliplr(x)], [d zeros(size(d))], palette(vnames{v}), ...
+    hFill(v) = fill(ax, [x fliplr(x)], [d zeros(size(d))], palette(vnames{v}), ...
         'FaceAlpha', 0.25, 'EdgeColor', palette(vnames{v}), 'LineWidth', 2);
 end
-xline(ax, floorBph, '--', 'SR-GS-002 floor (200 bph)', 'Color', [0.35 0.35 0.35], ...
+xline(ax, floorBph, '--', 'SR-GS-002 floor (200 bph)', 'Color', th.limit, ...
     'LineWidth', 1.2, 'FontSize', 9, 'LabelVerticalAlignment','bottom', ...
     'LabelHorizontalAlignment','right');
 yl = ylim(ax);
+% direct labels wear ink, not series color; the fill below carries identity
 for v = 1:nV
     text(ax, median(thr(:,v)), yl(2)*0.92, ...
         sprintf('%s\\newlineP(comply) = %.1f%%', vnames{v}, pPass(v)*100), ...
-        'Color', palette(vnames{v}), 'FontSize', 9, 'HorizontalAlignment','center');
+        'Color', inkP, 'FontSize', 9, 'HorizontalAlignment','center');
 end
+legend(ax, hFill, vnames, 'Location','northeast','Box','off','TextColor',inkP);
 set(ax,'YGrid','on','GridColor',gridC,'GridAlpha',1,'Box','off','Color',surf_, ...
     'XColor',inkS,'YColor',inkS,'FontSize',10);
 xlabel(ax,'Steady-state packaged throughput (bph)','Color',inkP);
