@@ -80,6 +80,10 @@ for v = 1:nV
 end
 yline(ax, 99, '--', 'SR-GS-007 floor (99%)', 'Color', th.limit, ...
     'LineWidth', 1.2, 'FontSize', 9, 'LabelHorizontalAlignment','left');
+% all three variants share the 0.995 design sensitivity, so the three
+% lines coincide exactly - say so, or the chart reads as one series
+text(ax, 2.75, 99.56, 'all three variants coincide (0.995 design sensitivity)', ...
+    'Color', inkS, 'FontSize', 9, 'HorizontalAlignment','center');
 set(ax,'YGrid','on','GridColor',gridC,'GridAlpha',1,'Box','off','Color',surf_, ...
     'XColor',inkS,'YColor',inkS,'FontSize',10);
 ylim(ax, [98.5 100]);

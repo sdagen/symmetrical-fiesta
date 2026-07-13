@@ -103,23 +103,23 @@ surf_ = th.surface; inkP = th.inkP; inkS = th.inkS; gridC = th.grid;
 
 f = figure('Visible','off','Color',surf_,'Position',[100 100 900 420]);
 ax = axes(f); hold(ax,'on');
-hFill = gobjects(1, nV);
 for v = 1:nV
     [d, x] = ksdensity(thr(:,v));
-    hFill(v) = fill(ax, [x fliplr(x)], [d zeros(size(d))], palette(vnames{v}), ...
+    fill(ax, [x fliplr(x)], [d zeros(size(d))], palette(vnames{v}), ...
         'FaceAlpha', 0.25, 'EdgeColor', palette(vnames{v}), 'LineWidth', 2);
 end
 xline(ax, floorBph, '--', 'SR-GS-002 floor (200 bph)', 'Color', th.limit, ...
     'LineWidth', 1.2, 'FontSize', 9, 'LabelVerticalAlignment','bottom', ...
     'LabelHorizontalAlignment','right');
 yl = ylim(ax);
-% direct labels wear ink, not series color; the fill below carries identity
+% each distribution is named by its own direct label (ink, not series
+% color) - identity is explicit text over the curve, so no legend box
+% competing with the labels for the top band
 for v = 1:nV
     text(ax, median(thr(:,v)), yl(2)*0.92, ...
         sprintf('%s\\newlineP(comply) = %.1f%%', vnames{v}, pPass(v)*100), ...
         'Color', inkP, 'FontSize', 9, 'HorizontalAlignment','center');
 end
-legend(ax, hFill, vnames, 'Location','northeast','Box','off','TextColor',inkP);
 set(ax,'YGrid','on','GridColor',gridC,'GridAlpha',1,'Box','off','Color',surf_, ...
     'XColor',inkS,'YColor',inkS,'FontSize',10);
 xlabel(ax,'Steady-state packaged throughput (bph)','Color',inkP);
