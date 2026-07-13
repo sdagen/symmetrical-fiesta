@@ -44,7 +44,7 @@ Every component in every variant carries the same eleven-property stereotype (ma
 
 ## Running the trade
 
-All three variants pass all eight requirement gates, which stops being surprising once you realize a trade study where two variants fail outright is a victory lap, not a study. The information is in the margins: HyperCook passes power at 99.6% of budget, LeanBroth passes automation at exactly the floor, EverSimmer is comfortable everywhere except a 4.7% cost margin.
+All three variants pass all eight requirement gates, which stops being surprising once you realize a trade study where two variants fail outright is a victory lap, not a study. The information is in the margins: HyperCook passes power at 99.6% of budget, LeanBroth passes automation at exactly the floor, EverSimmer is comfortable everywhere except a 4.7% cost margin. (The charts in this section render the study's latest numbers — by the end of this post a requirements ruling will have pushed HyperCook past the cost and volume caps, and you can already see it in the bars.)
 
 ![Budget utilization against the requirement caps](images/budget_utilization.png)
 
@@ -54,7 +54,7 @@ For scoring we used MCDA, which is the weighted decision matrix you already know
 
 ![Monte Carlo win share over 5,000 random weightings](images/mc_winshare.png)
 
-EverSimmer takes three of four scenarios and 84% of all possible stakeholder priorities, which turns "the committee picked EverSimmer" into "EverSimmer is robust to whatever the committee thinks." That was where the study stood: three compliant variants, one robust winner. Then I asked for more fidelity, and one of those claims stopped being true.
+EverSimmer takes three of four scenarios and 85% of all possible stakeholder priorities, which turns "the committee picked EverSimmer" into "EverSimmer is robust to whatever the committee thinks." That was where the study stood: three compliant variants, one robust winner. Then I asked for more fidelity, and one of those claims stopped being true.
 
 ## Giving the factory a pulse
 
