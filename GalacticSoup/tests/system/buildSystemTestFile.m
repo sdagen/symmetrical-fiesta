@@ -3,29 +3,30 @@ function buildSystemTestFile()
 %   Creates tests/system/GalacticSoupSystemTests.mldatx (ADR-022): two suites of
 %   simulation test cases on the three physical architecture models.
 %
-%   Verify-link semantics (ADR-022, scoped by ADR-035): a Verify link
-%   attaches only where a passing case means the requirement is met BY
-%   THE ADOPTED BASELINE ARCHITECTURE (EverSimmer, ADR-009). The
-%   HyperCook and LeanBroth cases all stay in the suite as unlinked
-%   "- regression baseline" cases: their numbers are still pinned
-%   against drift, but a rejected alternate's pass must not color a
-%   requirement's verification status.
+%   Verify-link semantics (ADR-022, per-variant per ADR-035): a Verify
+%   link attaches wherever a passing case means THAT VARIANT genuinely
+%   meets the requirement. No variant is committed as baseline: all
+%   three candidate architectures carry their own evidence, and
+%   per-variant attribution (which variant's cases verify which SRs)
+%   is done at reporting time from the case names - see the runAllTests
+%   per-variant coverage table and makeVariantTraceMatrix. Cases named
+%   "- regression baseline" pin a number that does NOT satisfy the
+%   requirement (or has none to satisfy) and stay unlinked.
 %
 %   Nominal suite - steady throughput and plant mode via custom criteria:
-%     ES verifies SR-GS-002 (floor), SR-GS-025 (first packaged output
-%     within the 3600 s startup period), and SR-GS-008 (vat serves from
-%     the simmer band, never exceeding 95 C). HC holds the floor too but
-%     is baselined unlinked; LB genuinely fails the floor (196.8 bph) -
-%     that story belongs to the compliance gate either way.
+%     HC/ES verify SR-GS-002 (floor) and SR-GS-025 (first packaged
+%     output within the 3600 s startup period); ES additionally verifies
+%     SR-GS-008 (vat serves from the simmer band, never exceeding 95 C).
+%     LB genuinely fails the floor (196.8 bph) - baselined unlinked;
+%     that story belongs to the compliance gate.
 %   WorstFault suite - Fault_T_* parameter overrides at t = 7200 s:
 %     ES verifies SR-GS-026 (retention ~2/3, Degraded mode); HC/LB
 %     baseline their 0% collapse unlinked.
 %   GravityExtremes suite - Gravity_g overrides at the SR-GS-015 range
-%     ends (0.1 g / 12 g): NO case carries an SR-GS-015 link. The
-%     baseline fails the floor at 0.1 g (189.3 bph, ADR-026), so
-%     SR-GS-015 is an OPEN verification gap until the pump-assisted
-%     drain redesign lands; HyperCook's full-range compliance is
-%     baselined unlinked (it is not the design being verified).
+%     ends (0.1 g / 12 g): HyperCook holds the floor across the range
+%     and verifies SR-GS-015; EverSimmer fails at 0.1 g (189.3 bph,
+%     ADR-026 - the pump-assisted drain redesign case) and its 0.1 g
+%     case is baselined unlinked.
 %
 %   Destructive and idempotent: recreates the file and re-links, purging
 %   stale Verify links to this artifact from the requirement set first.
@@ -102,7 +103,7 @@ tempFrag = sprintf(['lg = test.sltest_simout.get(''logsout'');\n' ...
 
 % {name, model, steady bph, extraFrags, links}
 nom = { ...
- 'HyperCook nominal - regression baseline',  'PhysicalHyperCook',  308.4, [floorFrag startupFrag], {}; ...
+ 'HyperCook nominal',  'PhysicalHyperCook',  308.4, [floorFrag startupFrag], {'SR-GS-002','SR-GS-025'}; ...
  'LeanBroth nominal - regression baseline', 'PhysicalLeanBroth', 196.8, '', {}; ...
  'EverSimmer nominal', 'PhysicalEverSimmer', 231.9, [floorFrag startupFrag tempFrag], {'SR-GS-002','SR-GS-025','SR-GS-008'}};
 for i = 1:size(nom,1)
@@ -123,20 +124,21 @@ for i = 1:size(nom,1)
 end
 
 % --- Gravity suite: SR-GS-015 extremes (0.1 g and 12 g) ---
-% NO links here (ADR-035): the baseline (EverSimmer) fails the floor at
-% 0.1 g - its batch vats drain at sqrt(g) and fall to ~189 bph - so
-% SR-GS-015 is an open verification gap flagged for the pump-assisted
-% drain redesign (ADR-026). HyperCook's pumped continuous lines hold the
-% floor across the whole range (see analysis/sweeps/runGravitySweep),
-% but it is a rejected alternate: its compliance is baselined, unlinked.
+% Only HyperCook holds the floor across the whole range (see
+% analysis/sweeps/runGravitySweep): its pumped continuous lines are
+% gravity-insensitive, so its cases verify SR-GS-015 FOR HYPERCOOK.
+% EverSimmer's batch vats drain at sqrt(g) and fall to ~189 bph at
+% 0.1 g - baselined, unlinked, and flagged as the microgravity redesign
+% case (pump-assisted drains, ADR-026). Per-variant reporting keeps
+% this honest: HyperCook's pass never paints EverSimmer's trace green.
 gravSuite = createTestSuite(tf, 'GravityExtremes');
 for stray = getTestCases(gravSuite)
     remove(stray);
 end
 % {name, model, Gravity_g, steady bph, verifyFloor, links}
 grv = { ...
- 'HyperCook at 0.1 g - regression baseline',  'PhysicalHyperCook', 0.1, 308.4, true,  {}; ...
- 'HyperCook at 12 g - regression baseline',   'PhysicalHyperCook', 12,  271.0, true,  {}; ...
+ 'HyperCook at 0.1 g',  'PhysicalHyperCook', 0.1, 308.4, true,  {'SR-GS-015'}; ...
+ 'HyperCook at 12 g',   'PhysicalHyperCook', 12,  271.0, true,  {'SR-GS-015'}; ...
  'EverSimmer at 0.1 g - regression baseline', 'PhysicalEverSimmer', 0.1, 189.3, false, {}};
 for i = 1:size(grv,1)
     tc = createTestCase(gravSuite, 'simulation', grv{i,1});
@@ -205,9 +207,8 @@ end
 % --- Contamination suite: SR-GS-007 detection sensitivity at 2% incidence ---
 % Criteria measure sensitivity = detected/(detected+escaped) from the
 % logged QC signals; design sensitivity 0.995 vs the 0.99 requirement
-% floor. Only the baseline links (ADR-035); HyperCook's identical QC
-% chain is baselined unlinked. LeanBroth is covered by the analysis
-% sweep (already sub-floor nominal, no case needed).
+% floor. Both robotic-QC variants link; LeanBroth is covered by the
+% analysis sweep (already sub-floor nominal, no case needed).
 contamSuite = createTestSuite(tf, 'Contamination');
 for stray = getTestCases(contamSuite)
     remove(stray);
@@ -220,7 +221,7 @@ sensFrag = sprintf(['lg = test.sltest_simout.get(''logsout'');\n' ...
     'test.verifyEqual(sens, 0.995, ''AbsTol'', 1e-3, ''design sensitivity'');\n']);
 % {name, model, bph at 2% incidence, links}
 ctm = { ...
- 'HyperCook contamination 2 percent - regression baseline',  'PhysicalHyperCook',  302.3, {}; ...
+ 'HyperCook contamination 2 percent',  'PhysicalHyperCook',  302.3, {'SR-GS-007'}; ...
  'EverSimmer contamination 2 percent', 'PhysicalEverSimmer', 227.3, {'SR-GS-007'}};
 for i = 1:size(ctm,1)
     tc = createTestCase(contamSuite, 'simulation', ctm{i,1});
@@ -243,8 +244,8 @@ end
 % --- TransportLoading suite: SR-GS-006 loading latency at nominal ---
 % Latency = dock-queue wait + transit, measured as the median
 % mass-threshold lag between the logged packed/loaded cumulative curves.
-% All three variants satisfy the latency limit, but only the baseline
-% links (ADR-035); the alternates' latencies are baselined unlinked.
+% All three variants link: LeanBroth fails the throughput floor but
+% genuinely satisfies loading latency - the link semantics cut both ways.
 transSuite = createTestSuite(tf, 'TransportLoading');
 for stray = getTestCases(transSuite)
     remove(stray);
@@ -264,8 +265,8 @@ latFrag = [ ...
     'test.verifyLessThanOrEqual(lag, 600, ''SR-GS-006 ten-minute limit'');\n'];
 % {name, model, transit baseline s, links}
 trn = { ...
- 'HyperCook transport loading - regression baseline',  'PhysicalHyperCook',  30,  {}; ...
- 'LeanBroth transport loading - regression baseline',  'PhysicalLeanBroth',  120, {}; ...
+ 'HyperCook transport loading',  'PhysicalHyperCook',  30,  {'SR-GS-006'}; ...
+ 'LeanBroth transport loading',  'PhysicalLeanBroth',  120, {'SR-GS-006'}; ...
  'EverSimmer transport loading', 'PhysicalEverSimmer', 60,  {'SR-GS-006'}};
 for i = 1:size(trn,1)
     tc = createTestCase(transSuite, 'simulation', trn{i,1});
@@ -295,7 +296,7 @@ recFrag = [ ...
     'test.verifyGreaterThanOrEqual(numel(unique(round(r.Data))), 8, ''SR-GS-001 recipe count'');\n'];
 % {name, model, flush override (or []), steady bph, links}
 rcp = { ...
- 'HyperCook recipe rotation - regression baseline',  'PhysicalHyperCook',  120, 289.0, {}; ...
+ 'HyperCook recipe rotation',  'PhysicalHyperCook',  120, 289.0, {'SR-GS-001'}; ...
  'EverSimmer recipe rotation', 'PhysicalEverSimmer', [],  231.9, {'SR-GS-001'}};
 for i = 1:size(rcp,1)
     tc = createTestCase(recSuite, 'simulation', rcp{i,1});
@@ -331,8 +332,8 @@ for stray = getTestCases(endSuite)
 end
 % {name, model, init var, cap, projected h, links}
 edu = { ...
- 'HyperCook storage endurance - regression baseline',  'PhysicalHyperCook',  'HC_StorageInit_bowls', 22300, 72.3, {}; ...
- 'LeanBroth storage endurance - regression baseline',  'PhysicalLeanBroth',  'LB_StorageInit_bowls', 14300, 72.6, {}; ...
+ 'HyperCook storage endurance',  'PhysicalHyperCook',  'HC_StorageInit_bowls', 22300, 72.3, {'SR-GS-021'}; ...
+ 'LeanBroth storage endurance',  'PhysicalLeanBroth',  'LB_StorageInit_bowls', 14300, 72.6, {'SR-GS-021'}; ...
  'EverSimmer storage endurance', 'PhysicalEverSimmer', 'ES_StorageInit_bowls', 16800, 72.8, {'SR-GS-021'}};
 for i = 1:size(edu,1)
     tc = createTestCase(endSuite, 'simulation', edu{i,1});
@@ -358,10 +359,9 @@ end
 
 % --- RocketTurnaround suite: SR-GS-018 (fill + handling <= 1200 s) ---
 % Turnaround measured from the logged loaded-flow cumulative curve at the
-% 60-bowl design shipment plus 120 s handling. Only the baseline links
-% (ADR-035): EverSimmer passes and links; HyperCook passes, baselined
-% unlinked; LeanBroth misses by 41.5 s at the design point - a finding,
-% baselined unlinked with an explicit > 1200 s assertion.
+% 60-bowl design shipment plus 120 s handling. HyperCook and EverSimmer
+% pass and link; LeanBroth misses by 41.5 s at the design point - a
+% finding, baselined unlinked with an explicit > 1200 s assertion.
 rktSuite = createTestSuite(tf, 'RocketTurnaround');
 for stray = getTestCases(rktSuite)
     remove(stray);
@@ -380,7 +380,7 @@ rktFrag = [ ...
     'turnaround = median(ft) + 120;\n'];                        % Rocket_Handling_s
 % {name, model, turnaround baseline s, passes, links}
 rkt = { ...
- 'HyperCook rocket turnaround - regression baseline',  'PhysicalHyperCook',  808.1,  true,  {}; ...
+ 'HyperCook rocket turnaround',  'PhysicalHyperCook',  808.1,  true,  {'SR-GS-018'}; ...
  'EverSimmer rocket turnaround', 'PhysicalEverSimmer', 1086.0, true,  {'SR-GS-018'}; ...
  'LeanBroth rocket turnaround - regression baseline', 'PhysicalLeanBroth', 1241.5, false, {}};
 for i = 1:size(rkt,1)
